@@ -1,6 +1,6 @@
-use std::cell::RefCell;
-use crate::view::Cursor;
 use crate::token::TokenType;
+use crate::view::Cursor;
+use std::cell::RefCell;
 
 #[derive(Debug, PartialEq)]
 pub enum IssueType {
@@ -29,12 +29,16 @@ impl Issue {
     }
 }
 
-pub fn runtime_issue<T>(context: &'static str) -> NResult<T> {
-    Err(Issue {
+pub fn issue(context: &'static str) -> Issue {
+    Issue {
         issue: IssueType::RuntimeError,
         position: None,
         context: context.into(),
-    })
+    }
+}
+
+pub fn runtime_issue<T>(context: &'static str) -> NResult<T> {
+    Err(issue(context))
 }
 
 pub type NResult<Type> = Result<Type, Issue>;
@@ -44,4 +48,3 @@ pub trait Skimmer {
     fn skim_token(&self, token_type: TokenType) -> NResult<Self::Item>;
     fn skim_issue(&self, token_type: IssueType) -> NResult<Self::Item>;
 }
-

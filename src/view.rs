@@ -1,5 +1,10 @@
 use std::cell::RefCell;
 
+pub trait KindMatcher {
+    type Kind;
+    fn peek_kind_test(&self, kind: Self::Kind) -> bool;
+}
+
 #[derive(Clone, Debug)]
 pub struct Cursor {
     pub start: usize,

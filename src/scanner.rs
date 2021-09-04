@@ -1,6 +1,6 @@
 use crate::context::Context;
+use crate::result::{Issue, IssueType, NResult, Skimmer};
 use crate::token::{Token, TokenType};
-use crate::result::{NResult, Skimmer, IssueType, Issue};
 use crate::util::{
     is_colon, is_digit, is_dot, is_double_quote, is_left_brace, is_left_bracket, is_left_paren,
     is_newline, is_slash, is_symbol_char, is_symbol_start, is_whitespace,
@@ -111,7 +111,8 @@ fn scan_comment(view: &CharView) -> NResult<Token> {
     while !view.peek_test(is_newline) && !view.eos() {
         view.advance();
     }
-    view.skim_token(TokenType::Comment)
+    view.skim_issue(IssueType::Ok)
+    // view.skim_token(TokenType::Comment)
 }
 
 pub fn scan(context: &Context, source: String) -> NResult<Vec<Token>> {
@@ -173,6 +174,5 @@ pub fn scan(context: &Context, source: String) -> NResult<Vec<Token>> {
         view.reset();
     }
     tokens.push(view.skim_token(TokenType::Eof).unwrap());
-    println!("{:?}", issues);
     Ok(tokens)
 }

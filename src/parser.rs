@@ -1,15 +1,23 @@
 use crate::ast::{Expr, Value};
-use crate::result::{Issue, IssueType, NResult, Skimmer};
+use crate::result::{Issue, NResult};
 use crate::token::{Token, TokenType};
+use crate::view::{View, KindMatcher};
 use std::str::FromStr;
-use crate::view::View;
-use std::f32;
 
 type Tokens = View<Token>;
-pub type ParseResult = NResult<Expr>;
+type ParseResult = NResult<Expr>;
 
 fn is_eof(token: &Token) -> bool {
     token.token_type == TokenType::Eof
+}
+
+impl KindMatcher for Tokens {
+    type Kind = TokenType;
+
+    fn peek_kind_test(&self, kind: Self::Kind) -> bool {
+        self.peek_test(|token| token.token_type == kind)
+    }
+
 }
 
 fn parse_vector(view: &Tokens) -> ParseResult {
@@ -31,14 +39,14 @@ fn parse_list(view: &Tokens) -> ParseResult {
     view.advance();
     match expressions.len() {
         0 => Ok(Expr::List(expressions)),
-        1 => Ok(Expr::Application(
+        1 => Ok(Expr::Invoke(
             Box::new(expressions.first().unwrap().clone()),
             vec![],
         )),
         _ => {
             let f = expressions.first().unwrap().clone();
             let args = expressions.get(1..expressions.len()).unwrap().clone();
-            Ok(Expr::Application(Box::new(f), args.into()))
+            Ok(Expr::Invoke(Box::new(f), args.into()))
         }
     }
 }
@@ -54,22 +62,21 @@ fn parse_set(view: &Tokens) -> ParseResult {
 }
 
 fn parse_expr(view: &Tokens) -> ParseResult {
-    if let Some(token) = view.advance() {
-        match token.token_type {
+    match view.advance() {
+        Some(token) => match token.token_type {
             TokenType::String | TokenType::Keyword | TokenType::Symbol | TokenType::Number => {
                 if let Ok(value) = Value::from_str(token.lexeme.as_str()) {
                     Ok(Expr::Atom(value))
                 } else {
-                    Err(Issue::parse_error("Failed", &view.cursor))
+                    Err(Issue::parse_error("Failed to parse atom.", &view.cursor))
                 }
             }
             TokenType::HashLeftBrace => parse_set(&view),
             TokenType::LeftParen => parse_list(&view),
             TokenType::LeftBracket => parse_vector(&view),
-            _ => Err(Issue::parse_error("What the fuck", &view.cursor)),
-        }
-    } else {
-        Err(Issue::parse_error("What the fuck", &view.cursor))
+            _ => todo!(),
+        },
+        None => Err(Issue::parse_error("What the fuck", &view.cursor)),
     }
 }
 
@@ -88,5 +95,6 @@ pub fn parse(tokens: Vec<Token>) -> ParseResult {
             }
         }
     }
+
     Ok(Expr::Program(expressions))
 }

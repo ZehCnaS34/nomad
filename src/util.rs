@@ -1,5 +1,5 @@
 pub fn is_symbol_start(c: &char) -> bool {
-    c.is_alphabetic() || "!$%^&*_-+<>':|".contains(*c)
+    c.is_alphabetic() || "!$%^&*_-+<>':|=".contains(*c)
 }
 
 pub fn is_symbol_char(c: &char) -> bool {

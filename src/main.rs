@@ -1,19 +1,18 @@
-mod scanner;
-mod rt;
-mod view;
-mod parser;
-mod context;
-mod util;
 mod analyzer;
 mod ast;
-mod token;
+mod context;
+mod parser;
 mod result;
+mod rt;
+mod scanner;
+mod token;
+mod util;
+mod view;
 use crate::result::NResult;
-use crate::rt::Runtime;
-use crate::ast::Value;
 use context::Context;
+use crate::rt::Runtime;
 use std::fs::read_to_string;
-
+use crate::ast::print_ast;
 
 fn main() -> NResult<()> {
     // use Value::*;
@@ -25,17 +24,17 @@ fn main() -> NResult<()> {
     //     println!("value = {:?}", value);
     // }
 
-
-
     let context = Context::new();
     if let Ok(source) = read_to_string("simple.nd") {
         let tokens = scanner::scan(&context, source)?;
-        println!("tokens {:#?}", tokens);
         let expr = parser::parse(tokens)?;
-        println!("parse {:#?}", expr);
-        // let runtime = Runtime::new();
+        // print_ast(&expr);
+        let runtime = Runtime::new();
+        let result = runtime.interpret(expr)?;
+        println!("{}", result);
         // let expr = analyzer::analyze(expr, runtime)?;
         // println!("analyze {:#?}", expr);
     }
+
     Ok(())
 }

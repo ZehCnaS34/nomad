@@ -1,4 +1,5 @@
 use crate::result::{runtime_issue, Issue, NResult};
+use std::fmt;
 use std::str::FromStr;
 
 pub type Symbol = String;
@@ -44,6 +45,14 @@ struct Lookup {
     name: Symbol,
 }
 
+impl fmt::Display for Lookup {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{}/{}", self.namespace, self.name)
+    }
+}
+
+struct Function {}
+
 #[derive(Debug, Clone)]
 pub enum Value {
     String(String),
@@ -51,12 +60,33 @@ pub enum Value {
     Symbol(Symbol),
     Lookup(Lookup),
     Keyword(Symbol),
+    Boolean(bool),
+    Nil,
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use Value::*;
+        match self {
+            String(value) => write!(f, "{}", value),
+            Number(value) => write!(f, "{}", value),
+            Symbol(value) => write!(f, "{}", value),
+            Keyword(value) => write!(f, "{}", value),
+            Lookup(value) => write!(f, "{}", value),
+            Boolean(value) => write!(f, "{}", value),
+            Nil => write!(f, "nil"),
+        }
+    }
 }
 
 impl FromStr for Value {
     type Err = ParseValueError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s.starts_with('"') {
+        if s == "true" {
+            Ok(Value::Boolean(true))
+        } else if s == "false" {
+            Ok(Value::Boolean(false))
+        } else if s.starts_with('"') {
             Ok(Value::String(s.get(1..s.len() - 1).unwrap().to_string()))
         } else if s.starts_with(":") {
             let s = String::from(s.strip_prefix(":").unwrap());
@@ -89,6 +119,20 @@ impl FromStr for Value {
 }
 
 impl Value {
+    pub fn get_symbol(self) -> NResult<Symbol> {
+        if let Value::Symbol(symbol) = self {
+            Ok(symbol)
+        } else {
+            runtime_issue("Failed to resolve to symbol")
+        }
+    }
+    pub fn get_number(self) -> NResult<Number> {
+        if let Value::Number(number) = self {
+            Ok(number)
+        } else {
+            runtime_issue("Failed to resolve to number")
+        }
+    }
     pub fn is_symbol(&self) -> bool {
         if let Value::Symbol(_) = self {
             true
@@ -96,15 +140,59 @@ impl Value {
             false
         }
     }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::Boolean(value) => *value,
+            Value::Nil => false,
+            _ => true,
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum Expr {
     Atom(Value),
-    Def(String, Option<Box<Expr>>),
-    Application(Box<Expr>, Vec<Expr>),
+    Invoke(Box<Expr>, Vec<Expr>),
     List(Vec<Expr>),
     HashSet(Vec<Expr>),
     Vector(Vec<Expr>),
     Program(Vec<Expr>),
+}
+
+pub fn print_ast(expr: &Expr) {
+    fn inner(expr: &Expr, offset: i32) {
+        use Expr::*;
+        match expr {
+            Program(expressions) => {
+                for expression in expressions {
+                    inner(expression, offset + 1);
+                }
+            }
+            Invoke(f, args) => {
+                inner(f, offset);
+                for arg in args {
+                    inner(arg, offset + 1);
+                }
+            }
+            Atom(value) => {
+                for i in 0..offset {
+                    print!("\t");
+                }
+                println!("{}", value);
+            }
+            _ => todo!(),
+        }
+    }
+    inner(expr, -1);
+}
+
+impl Expr {
+    pub fn get_atom(self) -> NResult<Value> {
+        if let Expr::Atom(value) = self {
+            Ok(value)
+        } else {
+            runtime_issue("Failed to resolve to atom")
+        }
+    }
 }

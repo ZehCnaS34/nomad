@@ -1,2 +1,11 @@
-(def name "alex")
-(print name)
+(def max 10)
+(def i 0)
+
+
+(while (< i max)
+    (println i)
+
+    (if (= i 3) (println "three"))
+    
+    (def i (+ i 1)))
+
