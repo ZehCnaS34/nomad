@@ -29,7 +29,7 @@ impl Issue {
     }
 }
 
-pub fn issue(context: &'static str) -> Issue {
+pub fn issue<S: Into<String>>(context: S) -> Issue {
     Issue {
         issue: IssueType::RuntimeError,
         position: None,
@@ -37,7 +37,7 @@ pub fn issue(context: &'static str) -> Issue {
     }
 }
 
-pub fn runtime_issue<T>(context: &'static str) -> NResult<T> {
+pub fn runtime_issue<T, S: Into<String>>(context: S) -> NResult<T> {
     Err(issue(context))
 }
 

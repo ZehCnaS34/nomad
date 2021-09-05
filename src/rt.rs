@@ -3,6 +3,50 @@ use crate::result::{issue, runtime_issue, NResult};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+fn take_2<T, S: Clone + Into<String>>(args: Vec<T>, s: S) -> NResult<(T, T)> {
+    let mut args = args.into_iter();
+    let one = args.next().ok_or(issue(format!(
+        "{} requires Two arguments. Zero given.",
+        s.clone().into()
+    )))?;
+    let two = args.next().ok_or(issue(format!(
+        "{} requires Two Arguments. One given.",
+        s.clone().into()
+    )))?;
+    Ok((one, two))
+}
+
+fn take_2_maybe_3<T, S: Clone + Into<String>>(args: Vec<T>, s: S) -> NResult<(T, T, Option<T>)> {
+    let mut args = args.into_iter();
+    let one = args.next().ok_or(issue(format!(
+        "{} requires Two arguments. Zero given.",
+        s.clone().into()
+    )))?;
+    let two = args.next().ok_or(issue(format!(
+        "{} requires Two Arguments. One given.",
+        s.clone().into()
+    )))?;
+    let three = args.next();
+    Ok((one, two, three))
+}
+
+fn take_3<T, S: Clone + Into<String>>(args: Vec<T>, s: S) -> NResult<(T, T, T)> {
+    let mut args = args.into_iter();
+    let one = args.next().ok_or(issue(format!(
+        "{} requires Three arguments. Zero given.",
+        s.clone().into()
+    )))?;
+    let two = args.next().ok_or(issue(format!(
+        "{} requires Three Arguments. One given.",
+        s.clone().into()
+    )))?;
+    let three = args.next().ok_or(issue(format!(
+        "{} requires Three Arguments. Two given.",
+        s.clone().into()
+    )))?;
+    Ok((one, two, three))
+}
+
 const BLOCK: &'static str = "nomad.core/block";
 const DEF: &'static str = "nomad.core/def";
 const DIVIDE: &'static str = "nomad.core//";
@@ -155,7 +199,7 @@ impl Runtime {
             let value = namespace
                 .bindings
                 .get(&n)
-                .ok_or(issue("Failed to resolve binding"))?;
+                .ok_or(issue(format!("Failed to resolve binding {:?}", n)))?;
             action(value.clone())
         })
     }
@@ -194,7 +238,7 @@ impl Runtime {
     pub fn gt(&self, a: Value, b: Value) -> NResult<Value> {
         use Value::*;
         match (a, b) {
-            (Number(a), Number(b)) => Ok(Boolean(a < b)),
+            (Number(a), Number(b)) => Ok(Boolean(a > b)),
             (Symbol(a), b) => self.resolve(a, |a| self.gt(a, b.clone())),
             (a, Symbol(b)) => self.resolve(b, |b| self.gt(a.clone(), b)),
             _ => runtime_issue("Cannot run this.."),
@@ -225,9 +269,19 @@ impl Runtime {
     pub fn mult(&self, a: Value, b: Value) -> NResult<Value> {
         use Value::*;
         match (a, b) {
-            (Number(a), Number(b)) => Ok(Number(a + b)),
+            (Number(a), Number(b)) => Ok(Number(a * b)),
             (Symbol(a), b) => self.resolve(a, |a| self.mult(a, b.clone())),
             (a, Symbol(b)) => self.resolve(b, |b| self.mult(a.clone(), b)),
+            _ => runtime_issue("Cannot run this.."),
+        }
+    }
+
+    pub fn div(&self, a: Value, b: Value) -> NResult<Value> {
+        use Value::*;
+        match (a, b) {
+            (Number(a), Number(b)) => Ok(Number(a / b)),
+            (Symbol(a), b) => self.resolve(a, |a| self.div(a, b.clone())),
+            (a, Symbol(b)) => self.resolve(b, |b| self.div(a.clone(), b)),
             _ => runtime_issue("Cannot run this.."),
         }
     }
@@ -269,9 +323,7 @@ impl Runtime {
                         Ok(sum)
                     }
                     MOD => {
-                        let mut args = args.into_iter();
-                        let left = args.next().ok_or(issue("Mod requires 2 arguments. None given"))?;
-                        let right = args.next().ok_or(issue("Mod required 2 arguments. 1 given"))?;
+                        let (left, right) = take_2(args, "Mod")?;
                         let left = self.interpret(left)?;
                         let right = self.interpret(right)?;
                         self.modu(left, right)
@@ -282,6 +334,17 @@ impl Runtime {
                             sum = self.mult(sum, self.interpret(operand)?)?;
                         }
                         Ok(sum)
+                    }
+                    DIVIDE => {
+                        let mut args = args.into_iter();
+                        let mut difference = self.interpret(
+                            args.next()
+                                .ok_or(issue("Division requires at least one argument."))?,
+                        )?;
+                        for operand in args {
+                            difference = self.div(difference, self.interpret(operand)?)?;
+                        }
+                        Ok(difference)
                     }
                     LT => {
                         let mut args = args.into_iter();
@@ -304,7 +367,7 @@ impl Runtime {
                         let mut args = args.into_iter();
                         let mut flag = true;
                         let mut last = self
-                            .interpret(args.next().ok_or(issue("Arguments for < are required"))?)?;
+                            .interpret(args.next().ok_or(issue("Arguments for > are required"))?)?;
                         while let Some(next) = args.next() {
                             let next = self.interpret(next)?;
                             let check = self.gt(last.clone(), next.clone())?;
@@ -351,11 +414,15 @@ impl Runtime {
                         Ok(result)
                     }
                     MINUS => {
-                        let mut sum = Value::Number(0.0);
+                        let mut args = args.into_iter();
+                        let mut difference = self.interpret(
+                            args.next()
+                                .ok_or(issue("Subtraction requires at least one argument."))?,
+                        )?;
                         for operand in args {
-                            sum = self.sub(sum, self.interpret(operand)?)?;
+                            difference = self.sub(difference, self.interpret(operand)?)?;
                         }
-                        Ok(sum)
+                        Ok(difference)
                     }
                     WHILE => {
                         let mut args = args.into_iter();
@@ -387,42 +454,23 @@ impl Runtime {
                         Ok(Value::Nil)
                     }
                     DEF => {
-                        let mut args = args.into_iter();
-                        let name = if let Some(name) = args.next() {
-                            name.get_atom()?.get_symbol()?
-                        } else {
-                            return runtime_issue("Invalid def name");
-                        };
-
-                        let value = if let Some(expr) = args.next() {
-                            self.interpret(expr)?
-                        } else {
-                            return runtime_issue("def missing initializer");
-                        };
-
+                        let (name, value) = take_2(args, "Def")?;
+                        let name = name
+                            .get_atom()?
+                            .get_symbol()
+                            .or(runtime_issue("Slot one of def should be a symbol."))?;
+                        let value = self.interpret(value)?;
                         self.define(name, Some(value))
                     }
                     IF => {
-                        let mut args = args.into_iter();
-                        let condition = if let Some(condition) = args.next() {
-                            self.interpret(condition)?
-                        } else {
-                            return runtime_issue("Failed to parse condition");
-                        };
-
+                        let (condition, true_branch, false_branch) = take_2_maybe_3(args, "If")?;
+                        let condition = self.interpret(condition)?;
                         if condition.is_truthy() {
-                            if let Some(branch) = args.next() {
-                                self.interpret(branch)
-                            } else {
-                                runtime_issue("Failed to parse condition")
-                            }
+                            self.interpret(true_branch)
+                        } else if let Some(branch) = false_branch {
+                            self.interpret(branch)
                         } else {
-                            if let Some(branch) = args.skip(1).next() {
-                                self.interpret(branch)
-                            } else {
-                                Ok(Value::Nil)
-                                // runtime_issue("Failed to parse condition")
-                            }
+                            Ok(Value::Nil)
                         }
                     }
                     value => {

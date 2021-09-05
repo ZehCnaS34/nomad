@@ -1,5 +1,5 @@
 use crate::context::Context;
-use crate::result::{Issue, IssueType, NResult, Skimmer};
+use crate::result::{Issue, IssueType, NResult, Skimmer, issue};
 use crate::token::{Token, TokenType};
 use crate::util::{
     is_colon, is_digit, is_dot, is_double_quote, is_left_brace, is_left_bracket, is_left_paren,
@@ -174,5 +174,9 @@ pub fn scan(context: &Context, source: String) -> NResult<Vec<Token>> {
         view.reset();
     }
     tokens.push(view.skim_token(TokenType::Eof).unwrap());
-    Ok(tokens)
+    if issues.len() > 0 {
+        Err(issue("Scanning resulted in errors"))
+    } else {
+        Ok(tokens)
+    }
 }

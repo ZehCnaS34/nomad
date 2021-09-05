@@ -1,7 +1,9 @@
+use crate::ast;
 use crate::ast::{Expr, Value};
 use crate::result::{Issue, NResult};
 use crate::token::{Token, TokenType};
-use crate::view::{View, KindMatcher};
+use crate::view::{KindMatcher, View};
+use im::Vector;
 use std::str::FromStr;
 
 type Tokens = View<Token>;
@@ -17,35 +19,35 @@ impl KindMatcher for Tokens {
     fn peek_kind_test(&self, kind: Self::Kind) -> bool {
         self.peek_test(|token| token.token_type == kind)
     }
-
 }
 
 fn parse_vector(view: &Tokens) -> ParseResult {
-    let mut expressions: Vec<Expr> = vec![];
+    let mut expressions: Vector<Expr> = Vector::new();
     while view.peek_test(|token| token.token_type != TokenType::RightBracket) {
         let expr = parse_expr(&view)?;
-        expressions.push(expr);
+        expressions.push_back(expr);
     }
     view.advance();
     Ok(Expr::Vector(expressions))
 }
 
 fn parse_list(view: &Tokens) -> ParseResult {
-    let mut expressions: Vec<Expr> = vec![];
+    let mut expressions: Vector<Expr> = Vector::new();
     while view.peek_test(|token| token.token_type != TokenType::RightParen) {
         let expr = parse_expr(&view)?;
-        expressions.push(expr);
+        expressions.push_back(expr);
     }
     view.advance();
     match expressions.len() {
         0 => Ok(Expr::List(expressions)),
         1 => Ok(Expr::Invoke(
-            Box::new(expressions.first().unwrap().clone()),
+            Box::new(expressions.iter().next().unwrap().clone()),
             vec![],
         )),
         _ => {
-            let f = expressions.first().unwrap().clone();
-            let args = expressions.get(1..expressions.len()).unwrap().clone();
+            let mut args = expressions.iter_mut();
+            let f = args.next().unwrap().clone();
+            let args: Vec<ast::Expr> = args.map(|expr| expr.clone()).collect();
             Ok(Expr::Invoke(Box::new(f), args.into()))
         }
     }
@@ -64,7 +66,7 @@ fn parse_set(view: &Tokens) -> ParseResult {
 fn parse_expr(view: &Tokens) -> ParseResult {
     match view.advance() {
         Some(token) => match token.token_type {
-            TokenType::String | TokenType::Keyword | TokenType::Symbol | TokenType::Number => {
+            TokenType::String | TokenType::Keyword | TokenType::Symbol | TokenType::Number | TokenType::Slash => {
                 if let Ok(value) = Value::from_str(token.lexeme.as_str()) {
                     Ok(Expr::Atom(value))
                 } else {
@@ -74,7 +76,10 @@ fn parse_expr(view: &Tokens) -> ParseResult {
             TokenType::HashLeftBrace => parse_set(&view),
             TokenType::LeftParen => parse_list(&view),
             TokenType::LeftBracket => parse_vector(&view),
-            _ => todo!(),
+            v => {
+                println!("{:?}", v);
+                todo!();
+            }
         },
         None => Err(Issue::parse_error("What the fuck", &view.cursor)),
     }

@@ -1,0 +1,26 @@
+;; factorial
+
+(def param 10)
+(def product param)
+
+(
+    while (< 1 param)
+
+    (def awesome "name")
+
+    ;; (
+    ;;     println
+    ;;     "param: " param
+    ;;     "product: " product
+    ;; )
+
+    (
+        if (= 5 param)
+        (println param product)
+    )
+
+    (def param (- param 1))
+    (def product (* product param))
+)
+
+product

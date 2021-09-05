@@ -1,0 +1,31 @@
+(def iterations 100000)
+
+(println "n,steps")
+
+(
+    while (> iterations 0)
+    (def param iterations)
+    (def steps 0)
+    (
+        while (> param 1)
+        (def steps (+ steps 1))
+        (
+            if (= 0 (mod param 2)) ;; even
+            (
+                do
+                (def param (/ param 2))
+            )
+            (
+                if (= 1 (mod param 2)) ;; odd
+                (
+                    do
+                    (def param (/ (+ (* 3 param) 1) 2))
+                )
+                (println "we have a problem")
+            )
+        )
+    )
+    (println iterations "," steps)
+    (def iterations (- iterations 1))
+)
+

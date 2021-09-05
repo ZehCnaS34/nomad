@@ -1,6 +1,8 @@
+extern crate im;
 use crate::result::{runtime_issue, Issue, NResult};
 use std::fmt;
 use std::str::FromStr;
+use im::Vector;
 
 pub type Symbol = String;
 
@@ -16,9 +18,12 @@ impl SymbolIntrospection for Symbol {
     type Item = Symbol;
 
     fn is_qualified(&self) -> bool {
-        self.contains('/')
+        self.contains('/') && self.len() > 1
     }
     fn split_symbol(&self) -> NResult<(Symbol, Symbol)> {
+        if self.len() == 1 {
+            return runtime_issue("Cannot split");
+        }
         if let Some(index) = self.find(|c| c == '/') {
             let (namespace, name) = self.split_at(index + 1);
             Ok((namespace.into(), name.into()))
@@ -92,7 +97,9 @@ impl fmt::Display for Value {
 impl FromStr for Value {
     type Err = ParseValueError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if s == "true" {
+        if s == "/" {
+            Ok(Value::Symbol(s.into()))
+        } else if s == "true" {
             Ok(Value::Boolean(true))
         } else if s == "false" {
             Ok(Value::Boolean(false))
@@ -133,6 +140,7 @@ impl Value {
         if let Value::Symbol(symbol) = self {
             Ok(symbol)
         } else {
+            println!("{:?}", self);
             runtime_issue("Failed to resolve to symbol")
         }
     }
@@ -164,9 +172,9 @@ impl Value {
 pub enum Expr {
     Atom(Value),
     Invoke(Box<Expr>, Vec<Expr>),
-    List(Vec<Expr>),
+    List(Vector<Expr>),
     HashSet(Vec<Expr>),
-    Vector(Vec<Expr>),
+    Vector(Vector<Expr>),
     Program(Vec<Expr>),
 }
 

@@ -8,34 +8,33 @@ mod scanner;
 mod token;
 mod util;
 mod view;
-use crate::result::NResult;
-use context::Context;
+use crate::result::{issue, runtime_issue, NResult};
 use crate::rt::Runtime;
+use context::Context;
 use std::fs::read_to_string;
-use crate::ast::print_ast;
+
+fn run_file(file_name: String) -> NResult<()> {
+    let context = Context::new();
+    let source = read_to_string(file_name.as_str()).or(runtime_issue(format!(
+        "Failed to load file: {}",
+        file_name.as_str()
+    )))?;
+
+    let tokens = scanner::scan(&context, source)?;
+    let expr = parser::parse(tokens)?;
+    let runtime = Runtime::new();
+    let result = runtime.interpret(expr)?;
+    println!("result = {}", result);
+    Ok(())
+}
+
+fn run() {}
 
 fn main() -> NResult<()> {
-    // use Value::*;
-    // let rt = Runtime::new();
-
-    // rt.define("age".into(), Some(Number(26.0)))?;
-
-    // if let Ok(value) = rt.add(&Symbol("age".into()), &Number(40.0)) {
-    //     println!("value = {:?}", value);
-    // }
-
-    let context = Context::new();
-    if let Ok(source) = read_to_string("simple.nd") {
-        let tokens = scanner::scan(&context, source)?;
-        let expr = parser::parse(tokens)?;
-        // print_ast(&expr);
-        let runtime = Runtime::new();
-        let result = runtime.interpret(expr)?;
-        println!("{}", result);
-        println!("runtime {:#?}", runtime);
-        // let expr = analyzer::analyze(expr, runtime)?;
-        // println!("analyze {:#?}", expr);
-    }
-
+    use std::env::args;
+    let mut args = args();
+    let _ = args.next().expect("How did this happen?");
+    let filename = args.next().ok_or(issue("A filename is required."))?;
+    run_file(filename)?;
     Ok(())
 }

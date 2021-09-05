@@ -5,6 +5,7 @@ struct State {
     scan_error: bool,
     parse_error: bool,
     errors: Vec<String>,
+    source: String,
 }
 
 #[derive(Debug)]
@@ -19,6 +20,7 @@ impl Context {
                 scan_error: false,
                 parse_error: false,
                 errors: vec![],
+                source: String::new(),
             }),
         }
     }
