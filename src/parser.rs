@@ -1,6 +1,6 @@
 use crate::ast;
 use crate::ast::{Expr, Value};
-use crate::result::{Issue, NResult};
+use crate::result::{Issue, NResult, parse_issue};
 use crate::token::{Token, TokenType};
 use crate::view::{KindMatcher, View};
 use im::Vector;
@@ -66,6 +66,7 @@ fn parse_set(view: &Tokens) -> ParseResult {
 fn parse_expr(view: &Tokens) -> ParseResult {
     match view.advance() {
         Some(token) => match token.token_type {
+            TokenType::Eof => parse_issue("Unexpected eof"),
             TokenType::String | TokenType::Keyword | TokenType::Symbol | TokenType::Number | TokenType::Slash => {
                 if let Ok(value) = Value::from_str(token.lexeme.as_str()) {
                     Ok(Expr::Atom(value))

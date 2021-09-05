@@ -40,6 +40,11 @@ pub fn issue<S: Into<String>>(context: S) -> Issue {
 pub fn runtime_issue<T, S: Into<String>>(context: S) -> NResult<T> {
     Err(issue(context))
 }
+pub fn parse_issue<T, S: Into<String>>(context: S) -> NResult<T> { Err(Issue {
+    issue: IssueType::ParseError,
+    position: None,
+    context: context.into(),
+})}
 
 pub type NResult<Type> = Result<Type, Issue>;
 

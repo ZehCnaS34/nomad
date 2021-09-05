@@ -49,7 +49,7 @@ fn take_3<T, S: Clone + Into<String>>(args: Vec<T>, s: S) -> NResult<(T, T, T)> 
 
 const BLOCK: &'static str = "nomad.core/block";
 const DEF: &'static str = "nomad.core/def";
-const DIVIDE: &'static str = "nomad.core//";
+const DIVIDE: &'static str = "nomad.core//"; // this looks ugly
 const DO: &'static str = "nomad.core/do";
 const EQ: &'static str = "nomad.core/=";
 const GT: &'static str = "nomad.core/>";

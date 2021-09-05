@@ -1,16 +1,32 @@
 use crate::context::Context;
 use crate::result::{Issue, IssueType, NResult, Skimmer, issue};
 use crate::token::{Token, TokenType};
+use crate::util as u;
 use crate::util::{
     is_colon, is_digit, is_dot, is_double_quote, is_left_brace, is_left_bracket, is_left_paren,
     is_newline, is_slash, is_symbol_char, is_symbol_start, is_whitespace,
 };
 use crate::view::{Cursor, View};
 
+
 type CharView = View<char>;
 
 impl Skimmer for CharView {
     type Item = Token;
+    fn skim_token(&self, token_type: TokenType) -> NResult<Token> {
+        let position = self.cursor.borrow();
+        let lexeme = self.view();
+        if lexeme.len() == 0 && token_type != TokenType::Eof {
+            self.skim_issue(IssueType::ScanError)
+        } else {
+            Ok(Token {
+                token_type,
+                lexeme: lexeme.iter().collect(),
+                position: position.clone(),
+            })
+        }
+    }
+
     fn skim_issue(&self, issue: IssueType) -> NResult<Token> {
         let position = self.cursor.borrow();
         if let Some(lexeme) = self.data.get(position.start..position.current) {
@@ -27,52 +43,31 @@ impl Skimmer for CharView {
             })
         }
     }
+}
 
-    fn skim_token(&self, token_type: TokenType) -> NResult<Token> {
-        let position = self.cursor.borrow();
-        let lexeme = self.view();
-        if lexeme.len() == 0 && token_type != TokenType::Eof {
-            self.skim_issue(IssueType::ScanError)
-        } else {
-            Ok(Token {
-                token_type,
-                lexeme: lexeme.iter().collect(),
-                position: position.clone(),
-            })
+fn scan_ident_fragment(view: &CharView) {
+    while view.peek_test(u::is_symbol_char) {
+        view.advance();
+        if view.peek_test(u::is_dot) && view.peek_next_test(u::is_symbol_start) {
+            view.advance();
         }
     }
 }
 
 fn scan_symbol(view: &CharView) -> NResult<Token> {
-    fn inner(view: &CharView) {
-        while view.peek_test(is_symbol_char) {
-            view.advance();
-            if view.peek_test(is_dot) && view.peek_next_test(is_symbol_start) {
-                view.advance();
-            }
-        }
-    }
-    inner(view);
+    scan_ident_fragment(view);
     if view.peek_test(is_slash) && view.peek_next_test(is_symbol_start) {
         view.advance();
-        inner(view);
+        scan_ident_fragment(view);
     }
     view.skim_token(TokenType::Symbol)
 }
 
 fn scan_keyword(view: &CharView) -> NResult<Token> {
-    fn inner(view: &CharView) {
-        while view.peek_test(is_symbol_char) {
-            view.advance();
-            if view.peek_test(is_dot) && view.peek_next_test(is_symbol_start) {
-                view.advance();
-            }
-        }
-    }
-    inner(view);
+    scan_ident_fragment(view);
     if view.peek_test(is_slash) && view.peek_next_test(is_symbol_start) {
         view.advance();
-        inner(view);
+        scan_ident_fragment(view);
     }
     view.skim_token(TokenType::Keyword)
 }

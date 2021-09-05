@@ -32,9 +32,11 @@ fn run() {}
 
 fn main() -> NResult<()> {
     use std::env::args;
-    let mut args = args();
-    let _ = args.next().expect("How did this happen?");
-    let filename = args.next().ok_or(issue("A filename is required."))?;
-    run_file(filename)?;
+    {
+        let mut args = args();
+        let _ = args.next().expect("How did this happen?");
+        let filename = args.next().ok_or(issue("A filename is required."))?;
+        run_file(filename)?;
+    }
     Ok(())
 }
