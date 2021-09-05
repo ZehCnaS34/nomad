@@ -1,4 +1,4 @@
-(def iterations 100000)
+(def iterations 100)
 
 (println "n,steps")
 

@@ -391,7 +391,7 @@ impl Runtime {
                 }
                 Ok(result)
             }
-            Expr::Invoke(f, args) => {
+            Expr::Invoke{function: f, parameters: args} => {
                 let f = self
                     .interpret(*f)?
                     .take_symbol()
@@ -564,7 +564,19 @@ impl Runtime {
                     }
                 }
             }
-            _ => todo!(),
+            Expr::Block{expressions} => {
+                self.push_scope()?;
+                let mut result = Value::Nil;
+                for expression in expressions {
+                    result = self.interpret(expression)?;
+                }
+                self.pop_scope()?;
+                Ok(result)
+            }
+            expr  => {
+                println!("{:#?}", expr);
+                todo!()
+            },
         }
     }
 }

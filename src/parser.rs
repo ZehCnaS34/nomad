@@ -40,15 +40,21 @@ fn parse_list(view: &Tokens) -> ParseResult {
     view.advance();
     match expressions.len() {
         0 => Ok(Expr::List(expressions)),
-        1 => Ok(Expr::Invoke(
-            Box::new(expressions.iter().next().unwrap().clone()),
-            vec![],
-        )),
+        1 => {
+            let function = Box::new(expressions.iter().next().unwrap().clone());
+            Ok(Expr::Invoke{
+                function,
+                parameters: vec![],
+            })
+        },
         _ => {
             let mut args = expressions.iter_mut();
-            let f = args.next().unwrap().clone();
-            let args: Vec<ast::Expr> = args.map(|expr| expr.clone()).collect();
-            Ok(Expr::Invoke(Box::new(f), args.into()))
+            let function = Box::new(args.next().unwrap().clone());
+            let parameters: Vec<ast::Expr> = args.map(|expr| expr.clone()).collect();
+            Ok(Expr::Invoke{
+                function,
+                parameters
+            })
         }
     }
 }
@@ -63,6 +69,38 @@ fn parse_set(view: &Tokens) -> ParseResult {
     Ok(Expr::HashSet(expressions))
 }
 
+fn parse_decorator(view: &Tokens) -> ParseResult {
+    let mutator = Box::new(parse_expr(view)?);
+    let mut parameters = vec![];
+    while !view.peek_kind_test(TokenType::RightBracket) && !view.peek_kind_test(TokenType::Eof) {
+        parameters.push(parse_expr(view)?);
+    }
+    if view.peek_kind_test(TokenType::Eof) {
+        return parse_issue("Unexpected EOF");
+    }
+    view.advance().unwrap();
+    let target = Box::new(parse_expr(view)?);
+    Ok(Expr::Decorator{
+        mutator,
+        parameters,
+        target,
+    })
+}
+
+fn parse_block(view: &Tokens) -> ParseResult {
+    use Expr::Block;
+    use TokenType::*;
+    let mut expressions = vec![];
+    while !view.peek_kind_test(RightBrace) && !view.peek_kind_test(Eof) {
+        expressions.push(parse_expr(view)?);
+    }
+    if view.peek_kind_test(Eof) {
+        return parse_issue("Expected }, given [eof]");
+    }
+    view.advance().unwrap();
+    Ok(Block{expressions})
+}
+
 fn parse_expr(view: &Tokens) -> ParseResult {
     match view.advance() {
         Some(token) => match token.token_type {
@@ -74,9 +112,11 @@ fn parse_expr(view: &Tokens) -> ParseResult {
                     Err(Issue::parse_error("Failed to parse atom.", &view.cursor))
                 }
             }
-            TokenType::HashLeftBrace => parse_set(&view),
-            TokenType::LeftParen => parse_list(&view),
-            TokenType::LeftBracket => parse_vector(&view),
+            TokenType::HashLeftBrace => parse_set(view),
+            TokenType::LeftBrace => parse_block(view),
+            TokenType::LeftParen => parse_list(view),
+            TokenType::LeftBracket => parse_vector(view),
+            TokenType::HashLeftBracket => parse_decorator(view),
             v => {
                 println!("{:?}", v);
                 todo!();

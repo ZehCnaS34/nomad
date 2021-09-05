@@ -174,7 +174,18 @@ impl Value {
 #[derive(Debug, Clone)]
 pub enum Expr {
     Atom(Value),
-    Invoke(Box<Expr>, Vec<Expr>),
+    Invoke{
+        function: Box<Expr>,
+        parameters: Vec<Expr>,
+    },
+    Decorator{
+        mutator: Box<Expr>,
+        parameters: Vec<Expr>,
+        target: Box<Expr>,
+    },
+    Block {
+        expressions: Vec<Expr>,
+    },
     List(Vector<Expr>),
     HashSet(Vec<Expr>),
     Vector(Vector<Expr>),
@@ -190,9 +201,9 @@ pub fn print_ast(expr: &Expr) {
                     inner(expression, offset + 1);
                 }
             }
-            Invoke(f, args) => {
-                inner(f, offset);
-                for arg in args {
+            Invoke{function, parameters} => {
+                inner(function, offset);
+                for arg in parameters {
                     inner(arg, offset + 1);
                 }
             }
