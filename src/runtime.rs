@@ -1,8 +1,9 @@
 use crate::ast::{Expr, Symbol, SymbolIntrospection, Value};
+use crate::chain::{Chain, Link};
 use crate::result::{issue, runtime_issue, NResult};
+use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::borrow::BorrowMut;
 
 fn take_2<T, S: Clone + Into<String>>(args: Vec<T>, s: S) -> NResult<(T, T)> {
     let mut args = args.into_iter();
@@ -51,7 +52,6 @@ fn take_3<T, S: Clone + Into<String>>(args: Vec<T>, s: S) -> NResult<(T, T, T)> 
 const BLOCK: &'static str = "nomad.core/block";
 const DEF: &'static str = "nomad.core/def";
 const DIVIDE: &'static str = "nomad.core//";
-// this looks ugly
 const DO: &'static str = "nomad.core/do";
 const EQ: &'static str = "nomad.core/=";
 const GT: &'static str = "nomad.core/>";
@@ -65,17 +65,48 @@ const MOD: &'static str = "nomad.core/mod";
 const PRINTLN: &'static str = "nomad.core/println";
 const WHILE: &'static str = "nomad.core/while";
 
+type Label = i32;
+
+static mut COUNTER: Label = 0;
+
+#[derive(Debug)]
 pub struct Scope {
-    parents: Vec<Scope>,
-    local: RefCell<HashMap<String, Value>>,
+    parent: Option<Label>,
+    label: Label,
+    locals: HashMap<Symbol, Value>,
+}
+
+impl Link for Scope {
+    fn label(&self) -> Label {
+        self.label
+    }
+    fn parent(&self) -> Option<Label> {
+        self.parent
+    }
+    fn set_parent(&mut self, parent: Label) {
+        self.parent = Some(parent);
+    }
 }
 
 impl Scope {
     fn new() -> Scope {
-        Scope {
-            parents: vec![],
-            local: RefCell::new(HashMap::new()),
+        unsafe {
+            let label = COUNTER;
+            COUNTER += 1;
+            Scope {
+                parent: None,
+                label,
+                locals: HashMap::new(),
+            }
         }
+    }
+
+    fn insert(&mut self, name: Symbol, value: Value) {
+        self.locals.insert(name, value);
+    }
+
+    fn get(&self, name: Symbol) -> Option<Value> {
+        self.locals.get(&name).map(|value| value.clone())
     }
 }
 
@@ -85,19 +116,33 @@ pub struct Namespace {
     pub name: Symbol,
     pub aliases: HashMap<Symbol, Symbol>,
     pub bindings: HashMap<String, Value>,
-    pub locals: HashMap<Symbol, Value>,
+    pub scope: Chain<Scope>,
 }
 
 impl Namespace {
+    fn lift_scope(&mut self) {
+        self.scope.push(Scope::new());
+    }
+
+    fn drop_scope(&mut self) -> NResult<()> {
+        self.scope.pop();
+        Ok(())
+    }
+
     fn new<S: Into<String>>(name: S) -> Namespace {
+        let mut scopes = HashMap::new();
+        let scope = Scope::new();
+        let label = scope.label;
+        scopes.insert(label, scope);
         Namespace {
             parent: None,
             name: name.into(),
             aliases: HashMap::new(),
             bindings: HashMap::new(),
-            locals: HashMap::new(),
+            scope: Chain::new(Scope::new()),
         }
     }
+
     fn core() -> Namespace {
         Namespace::new("nomad.core")
             .define_str(BLOCK)
@@ -117,11 +162,16 @@ impl Namespace {
             .define_str(WHILE)
     }
 
-    fn get(&self, symbol: &Symbol) -> NResult<&Value> {
-        match self.bindings.get(symbol) {
-            Some(value) => Ok(value),
-            None => runtime_issue("Symbol not defined"),
+    fn resolve(&self, symbol: Symbol) -> NResult<Value> {
+        for scope in self.scope.iter() {
+            if let Some(value) = scope.get(symbol.clone()) {
+                return Ok(value);
+            }
         }
+        self.bindings
+            .get(&symbol)
+            .map(|value| value.clone())
+            .ok_or(issue("Failed to resolve binding"))
     }
 
     fn define_str<S: Into<Symbol>>(mut self, s: S) -> Self {
@@ -136,6 +186,15 @@ impl Namespace {
 
     fn define(&mut self, symbol: Symbol, value: Value) {
         self.bindings.insert(symbol.clone(), value);
+    }
+
+    fn define_local(&mut self, symbol: Symbol, value: Value) -> NResult<()> {
+        let scope = self
+            .scope
+            .get_mut_current()
+            .ok_or(issue("Scope doesn't exist"))?;
+        scope.insert(symbol, value);
+        Ok(())
     }
 }
 
@@ -159,29 +218,9 @@ impl Runtime {
         namespace.name.clone()
     }
 
-    fn ns_count(&self) -> usize {
-        self.namespaces.borrow().len()
-    }
-
-    fn push_scope(&self) -> NResult<()> {
-        let count = self.ns_count();
-        self.using_namespace(self.current_namespace(), |parent| {
-            let child_name = format!("{}.scope_{}", parent.name.clone(), count);
-            let child = Namespace::new(child_name);
-            let mut namespaces = self.namespaces.borrow_mut();
-            namespaces.insert(0, child);
-            Ok(Value::Nil)
-        }).and(Ok(()))
-    }
-
-    fn pop_scope(&self) {
-        let mut namespaces = self.namespaces.borrow_mut();
-        namespaces.remove(0);
-    }
-
     pub fn using_namespace<Action>(&self, ns: Symbol, action: Action) -> NResult<Value>
-        where
-            Action: Fn(&Namespace) -> NResult<Value>,
+    where
+        Action: Fn(&Namespace) -> NResult<Value>,
     {
         let namespaces = self.namespaces.borrow();
         for namespace in namespaces.iter() {
@@ -192,9 +231,13 @@ impl Runtime {
         Err(issue("failed to resolve namespace"))
     }
 
-    pub fn using_mut_namespace<Action>(&self, ns: Symbol, mut action: Action) -> NResult<Value>
-        where
-            Action: FnMut(&mut Namespace) -> NResult<Value>,
+    pub fn using_mut_namespace<Action, Value>(
+        &self,
+        ns: Symbol,
+        mut action: Action,
+    ) -> NResult<Value>
+    where
+        Action: FnMut(&mut Namespace) -> NResult<Value>,
     {
         let mut namespaces = self.namespaces.borrow_mut();
         for namespace in namespaces.iter_mut() {
@@ -203,6 +246,17 @@ impl Runtime {
             }
         }
         Err(issue("failed to resolve namespace"))
+    }
+
+    fn push_scope(&self) -> NResult<()> {
+        self.using_mut_namespace(self.current_namespace(), |ns| {
+            ns.lift_scope();
+            Ok(())
+        })
+    }
+
+    fn pop_scope(&self) -> NResult<()> {
+        self.using_mut_namespace(self.current_namespace(), |ns| ns.drop_scope())
     }
 
     pub fn inflate_symbol(&self, symbol: Symbol) -> (Symbol, Symbol) {
@@ -214,16 +268,13 @@ impl Runtime {
     }
 
     pub fn resolve<Action>(&self, symbol: Symbol, action: Action) -> NResult<Value>
-        where
-            Action: Fn(Value) -> NResult<Value>,
+    where
+        Action: Fn(Value) -> NResult<Value>,
     {
         let (ns, n) = self.inflate_symbol(symbol);
         self.using_namespace(ns, |namespace| {
-            let value = namespace
-                .bindings
-                .get(&n)
-                .ok_or(issue(format!("Failed to resolve binding {:?}", n)))?;
-            action(value.clone())
+            let value = namespace.resolve(n.clone())?;
+            action(value)
         })
     }
 
@@ -231,6 +282,14 @@ impl Runtime {
         let (ns, n) = self.inflate_symbol(name);
         self.using_mut_namespace(ns, move |namespace| {
             namespace.define(n.clone(), value.clone().unwrap());
+            Ok(Value::Nil)
+        })
+    }
+
+    pub fn define_local(&self, name: Symbol, value: Option<Value>) -> NResult<Value> {
+        let (ns, n) = self.inflate_symbol(name);
+        self.using_mut_namespace(ns, move |namespace| {
+            namespace.define_local(n.clone(), value.clone().unwrap())?;
             Ok(Value::Nil)
         })
     }
@@ -421,19 +480,13 @@ impl Runtime {
                         Ok(Value::Boolean(flag))
                     }
                     DO => {
+                        self.push_scope()?;
                         let mut args = args.into_iter();
                         let mut result = Value::Nil;
                         while let Some(next) = args.next() {
                             result = self.interpret(next)?;
                         }
-                        Ok(result)
-                    }
-                    BLOCK => {
-                        let mut args = args.into_iter();
-                        let mut result = Value::Nil;
-                        while let Some(next) = args.next() {
-                            result = self.interpret(next)?;
-                        }
+                        self.pop_scope()?;
                         Ok(result)
                     }
                     MINUS => {
@@ -484,6 +537,15 @@ impl Runtime {
                             .or(runtime_issue("Slot one of def should be a symbol."))?;
                         let value = self.interpret(value)?;
                         self.define(name, Some(value))
+                    }
+                    LET => {
+                        let (name, value) = take_2(args, "Let")?;
+                        let name = name
+                            .take_atom()?
+                            .take_symbol()
+                            .or(runtime_issue("Slot one of def should be a symbol."))?;
+                        let value = self.interpret(value)?;
+                        self.define_local(name, Some(value))
                     }
                     IF => {
                         let (condition, true_branch, false_branch) = take_2_maybe_3(args, "If")?;

@@ -1,21 +1,23 @@
 mod analyzer;
 mod ast;
 mod context;
+mod cursor;
+mod namespace_manager;
 mod parser;
 mod result;
-mod rt;
+mod runtime;
 mod scanner;
 mod token;
 mod util;
 mod view;
-mod cursor;
+mod chain;
 
-use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
 use crate::result::{issue, runtime_issue, NResult};
-use crate::rt::Runtime;
+use crate::runtime::Runtime;
 use context::Context;
+use std::collections::hash_map::DefaultHasher;
 use std::fs::read_to_string;
+use std::hash::{Hash, Hasher};
 
 fn run_file(file_name: String) -> NResult<()> {
     let context = Context::new();

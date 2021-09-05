@@ -1,3 +1,22 @@
-(block
-(println "Hello, world")
+(let name "alex")
+
+(println name)
+
+
+(do
+    (let name "raul")
+    (println name)
+
+    (do
+
+        (let name "sanchez")
+
+        (println name)
+    
+    )
+
+    (println name)
+
 )
+
+(println name)
