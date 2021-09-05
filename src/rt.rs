@@ -1,31 +1,69 @@
-use crate::ast::{is_qualified, name, namespace, Expr, Symbol, Value};
+use crate::ast::{Expr, Symbol, SymbolIntrospection, Value};
 use crate::result::{issue, runtime_issue, NResult};
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+const BLOCK: &'static str = "nomad.core/block";
+const DEF: &'static str = "nomad.core/def";
+const DIVIDE: &'static str = "nomad.core//";
+const DO: &'static str = "nomad.core/do";
+const EQ: &'static str = "nomad.core/=";
+const GT: &'static str = "nomad.core/>";
+const IF: &'static str = "nomad.core/if";
+const LET: &'static str = "nomad.core/let";
+const LT: &'static str = "nomad.core/<";
+const PLUS: &'static str = "nomad.core/+";
+const MINUS: &'static str = "nomad.core/-";
+const MULT: &'static str = "nomad.core/*";
+const MOD: &'static str = "nomad.core/mod";
+const PRINTLN: &'static str = "nomad.core/println";
+const WHILE: &'static str = "nomad.core/while";
+
+pub struct Scope {
+    parents: Vec<Scope>,
+    local: RefCell<HashMap<String, Value>>,
+}
+
+impl Scope {
+    fn new() -> Scope {
+        Scope {
+            parents: vec![],
+            local: RefCell::new(HashMap::new()),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Namespace {
+    pub parent: Option<Box<Namespace>>,
     pub name: Symbol,
     pub aliases: HashMap<Symbol, Symbol>,
     pub bindings: HashMap<String, Value>,
 }
 
 impl Namespace {
-    fn new<T: Into<Symbol>>(name: T) -> Namespace {
-        let mut ns = Namespace {
-            name: name.into(),
+    fn core() -> Namespace {
+        Namespace {
+            parent: None,
+            name: "nomad.core".into(),
             aliases: HashMap::new(),
             bindings: HashMap::new(),
-        };
-        ns.define("+".into(), Value::Symbol("nomad.core/+".into()));
-        ns.define("-".into(), Value::Symbol("nomad.core/-".into()));
-        ns.define("<".into(), Value::Symbol("nomad.core/<".into()));
-        ns.define("=".into(), Value::Symbol("nomad.core/=".into()));
-        ns.define("println".into(), Value::Symbol("nomad.core/println".into()));
-        ns.define("def".into(), Value::Symbol("nomad.core/def".into()));
-        ns.define("while".into(), Value::Symbol("nomad.core/while".into()));
-        ns.define("if".into(), Value::Symbol("nomad.core/if".into()));
-        ns
+        }
+        .define_str(BLOCK)
+        .define_str(DEF)
+        .define_str(DIVIDE)
+        .define_str(DO)
+        .define_str(EQ)
+        .define_str(GT)
+        .define_str(IF)
+        .define_str(LET)
+        .define_str(LT)
+        .define_str(MINUS)
+        .define_str(MOD)
+        .define_str(MULT)
+        .define_str(PLUS)
+        .define_str(PRINTLN)
+        .define_str(WHILE)
     }
 
     fn get(&self, symbol: &Symbol) -> NResult<&Value> {
@@ -35,6 +73,16 @@ impl Namespace {
         }
     }
 
+    fn define_str<S: Into<Symbol>>(mut self, s: S) -> Self {
+        let symbol = s.into();
+        if !symbol.is_qualified() {
+            panic!("Failed");
+        }
+        let (_, n) = symbol.split_symbol().unwrap();
+        self.define(n, Value::Symbol(symbol));
+        self
+    }
+
     fn define(&mut self, symbol: Symbol, value: Value) {
         self.bindings.insert(symbol.clone(), value);
     }
@@ -42,22 +90,59 @@ impl Namespace {
 
 #[derive(Debug)]
 pub struct Runtime {
-    pub namespaces: RefCell<HashMap<Symbol, Namespace>>,
-    pub current_namespace: Symbol,
+    pub namespaces: RefCell<Vec<Namespace>>,
 }
 
 impl Runtime {
     pub fn new() -> Runtime {
-        let name = "nomad.core";
-        let namespace = Namespace::new(name);
-        let namespaces = RefCell::new(HashMap::new());
-        {
-            let mut namespaces = namespaces.borrow_mut();
-            namespaces.insert(name.into(), namespace);
-        }
         Runtime {
-            namespaces,
-            current_namespace: name.into(),
+            namespaces: RefCell::new(vec![Namespace::core()]),
+        }
+    }
+
+    fn current_namespace(&self) -> Symbol {
+        let namespaces = self.namespaces.borrow_mut();
+        let namespace = namespaces
+            .first()
+            .expect("The namespaces vector should never be empty");
+        namespace.name.clone()
+    }
+
+    fn push_scope(&mut self) {}
+
+    fn pop_scope(&mut self) {}
+
+    pub fn with_namespace<Action>(&self, ns: Symbol, action: Action) -> NResult<Value>
+    where
+        Action: Fn(&Namespace) -> NResult<Value>,
+    {
+        let namespaces = self.namespaces.borrow();
+        for namespace in namespaces.iter() {
+            if namespace.name == ns {
+                return action(namespace);
+            }
+        }
+        Err(issue("failed to resolve namespace"))
+    }
+
+    pub fn with_mut_namespace<Action>(&self, ns: Symbol, mut action: Action) -> NResult<Value>
+    where
+        Action: FnMut(&mut Namespace) -> NResult<Value>,
+    {
+        let mut namespaces = self.namespaces.borrow_mut();
+        for namespace in namespaces.iter_mut() {
+            if namespace.name == ns {
+                return action(namespace);
+            }
+        }
+        Err(issue("failed to resolve namespace"))
+    }
+
+    pub fn inflate_symbol(&self, symbol: Symbol) -> (Symbol, Symbol) {
+        if let Some(ns) = symbol.namespace() {
+            (ns, symbol.name())
+        } else {
+            (self.current_namespace(), symbol)
         }
     }
 
@@ -65,31 +150,22 @@ impl Runtime {
     where
         Action: Fn(Value) -> NResult<Value>,
     {
-        let (ns, n) = if is_qualified(&symbol) {
-            (namespace(&symbol), name(&symbol))
-        } else {
-            (self.current_namespace.clone(), symbol.clone())
-        };
-        let namespaces = self.namespaces.borrow();
-        let namespace = match namespaces.get(&ns) {
-            Some(namespace) => Ok(namespace),
-            None => runtime_issue("Failed"),
-        }?;
-        let value = namespace.get(&n)?.clone();
-        // match namespace.bindings.get(&name(&symbol)) {
-        //     Some()
-        // }
-        action(value)
+        let (ns, n) = self.inflate_symbol(symbol);
+        self.with_namespace(ns, |namespace| {
+            let value = namespace
+                .bindings
+                .get(&n)
+                .ok_or(issue("Failed to resolve binding"))?;
+            action(value.clone())
+        })
     }
 
     pub fn define(&self, name: Symbol, value: Option<Value>) -> NResult<Value> {
-        let mut namespaces = self.namespaces.borrow_mut();
-        let namespace = match namespaces.get_mut(&self.current_namespace) {
-            Some(namespace) => Ok(namespace),
-            None => runtime_issue("Namespaces does not exist"),
-        }?;
-        namespace.define(name, value.unwrap());
-        Ok(Value::Nil)
+        let (ns, n) = self.inflate_symbol(name);
+        self.with_mut_namespace(ns, move |namespace| {
+            namespace.define(n.clone(), value.clone().unwrap());
+            Ok(Value::Nil)
+        })
     }
 
     pub fn eq(&self, a: Value, b: Value) -> NResult<Value> {
@@ -115,6 +191,26 @@ impl Runtime {
         }
     }
 
+    pub fn gt(&self, a: Value, b: Value) -> NResult<Value> {
+        use Value::*;
+        match (a, b) {
+            (Number(a), Number(b)) => Ok(Boolean(a < b)),
+            (Symbol(a), b) => self.resolve(a, |a| self.gt(a, b.clone())),
+            (a, Symbol(b)) => self.resolve(b, |b| self.gt(a.clone(), b)),
+            _ => runtime_issue("Cannot run this.."),
+        }
+    }
+
+    pub fn modu(&self, a: Value, b: Value) -> NResult<Value> {
+        use Value::*;
+        match (a, b) {
+            (Number(a), Number(b)) => Ok(Number(a % b)),
+            (Symbol(a), b) => self.resolve(a, |a| self.modu(a, b.clone())),
+            (a, Symbol(b)) => self.resolve(b, |b| self.modu(a.clone(), b)),
+            _ => runtime_issue("Cannot run this.."),
+        }
+    }
+
     pub fn add(&self, a: Value, b: Value) -> NResult<Value> {
         use Value::*;
         match (a, b) {
@@ -122,6 +218,16 @@ impl Runtime {
             (String(a), String(b)) => Ok(String(format!("{}{}", a, b))),
             (Symbol(a), b) => self.resolve(a, |a| self.add(a, b.clone())),
             (a, Symbol(b)) => self.resolve(b, |b| self.add(a.clone(), b)),
+            _ => runtime_issue("Cannot run this.."),
+        }
+    }
+
+    pub fn mult(&self, a: Value, b: Value) -> NResult<Value> {
+        use Value::*;
+        match (a, b) {
+            (Number(a), Number(b)) => Ok(Number(a + b)),
+            (Symbol(a), b) => self.resolve(a, |a| self.mult(a, b.clone())),
+            (a, Symbol(b)) => self.resolve(b, |b| self.mult(a.clone(), b)),
             _ => runtime_issue("Cannot run this.."),
         }
     }
@@ -150,19 +256,38 @@ impl Runtime {
                 Ok(result)
             }
             Expr::Invoke(f, args) => {
-                let f = self.interpret(*f)?.get_symbol().or(Err(issue("Must resolve to something invokable")))?;
+                let f = self
+                    .interpret(*f)?
+                    .get_symbol()
+                    .or(Err(issue("Must resolve to something invocable")))?;
                 match f.as_str() {
-                    "nomad.core/+" => {
+                    PLUS => {
                         let mut sum = Value::Number(0.0);
                         for operand in args {
                             sum = self.add(sum, self.interpret(operand)?)?;
                         }
                         Ok(sum)
                     }
-                    "nomad.core/<" => {
+                    MOD => {
+                        let mut args = args.into_iter();
+                        let left = args.next().ok_or(issue("Mod requires 2 arguments. None given"))?;
+                        let right = args.next().ok_or(issue("Mod required 2 arguments. 1 given"))?;
+                        let left = self.interpret(left)?;
+                        let right = self.interpret(right)?;
+                        self.modu(left, right)
+                    }
+                    MULT => {
+                        let mut sum = Value::Number(1.0);
+                        for operand in args {
+                            sum = self.mult(sum, self.interpret(operand)?)?;
+                        }
+                        Ok(sum)
+                    }
+                    LT => {
                         let mut args = args.into_iter();
                         let mut flag = true;
-                        let mut last = self.interpret(args.next().ok_or(issue("Arguments for < are required"))?)?;
+                        let mut last = self
+                            .interpret(args.next().ok_or(issue("Arguments for < are required"))?)?;
                         while let Some(next) = args.next() {
                             let next = self.interpret(next)?;
                             let check = self.lt(last.clone(), next.clone())?;
@@ -175,10 +300,28 @@ impl Runtime {
                         }
                         Ok(Value::Boolean(flag))
                     }
-                    "nomad.core/=" => {
+                    GT => {
                         let mut args = args.into_iter();
                         let mut flag = true;
-                        let mut last = self.interpret(args.next().ok_or(issue("Arguments for = are required"))?)?;
+                        let mut last = self
+                            .interpret(args.next().ok_or(issue("Arguments for < are required"))?)?;
+                        while let Some(next) = args.next() {
+                            let next = self.interpret(next)?;
+                            let check = self.gt(last.clone(), next.clone())?;
+                            if !check.is_truthy() {
+                                flag = false;
+                                break;
+                            } else {
+                                last = next;
+                            }
+                        }
+                        Ok(Value::Boolean(flag))
+                    }
+                    EQ => {
+                        let mut args = args.into_iter();
+                        let mut flag = true;
+                        let mut last = self
+                            .interpret(args.next().ok_or(issue("Arguments for = are required"))?)?;
                         while let Some(next) = args.next() {
                             let next = self.interpret(next)?;
                             let check = self.eq(last.clone(), next.clone())?;
@@ -191,29 +334,47 @@ impl Runtime {
                         }
                         Ok(Value::Boolean(flag))
                     }
-                    "nomad.core/-" => {
+                    DO => {
+                        let mut args = args.into_iter();
+                        let mut result = Value::Nil;
+                        while let Some(next) = args.next() {
+                            result = self.interpret(next)?;
+                        }
+                        Ok(result)
+                    }
+                    BLOCK => {
+                        let mut args = args.into_iter();
+                        let mut result = Value::Nil;
+                        while let Some(next) = args.next() {
+                            result = self.interpret(next)?;
+                        }
+                        Ok(result)
+                    }
+                    MINUS => {
                         let mut sum = Value::Number(0.0);
                         for operand in args {
                             sum = self.sub(sum, self.interpret(operand)?)?;
                         }
                         Ok(sum)
                     }
-                    "nomad.core/while" => {
+                    WHILE => {
                         let mut args = args.into_iter();
-                        let condition = args.next().ok_or(issue("While loops must contain a condition"))?;
+                        let condition = args
+                            .next()
+                            .ok_or(issue("While loops must contain a condition"))?;
                         let body: Vec<_> = args.collect();
                         loop {
                             let check = self.interpret(condition.clone())?;
                             if !check.is_truthy() {
                                 break;
-                            } 
+                            }
                             for expr in body.clone() {
                                 self.interpret(expr)?;
                             }
                         }
                         Ok(Value::Nil)
                     }
-                    "nomad.core/println" => {
+                    PRINTLN => {
                         let size = args.len();
                         for (i, arg) in args.into_iter().enumerate() {
                             let value = self.interpret(arg)?;
@@ -225,7 +386,7 @@ impl Runtime {
                         print!("\n");
                         Ok(Value::Nil)
                     }
-                    "nomad.core/def" => {
+                    DEF => {
                         let mut args = args.into_iter();
                         let name = if let Some(name) = args.next() {
                             name.get_atom()?.get_symbol()?
@@ -241,7 +402,7 @@ impl Runtime {
 
                         self.define(name, Some(value))
                     }
-                    "nomad.core/if" => {
+                    IF => {
                         let mut args = args.into_iter();
                         let condition = if let Some(condition) = args.next() {
                             self.interpret(condition)?

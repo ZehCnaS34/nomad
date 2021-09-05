@@ -32,6 +32,7 @@ fn main() -> NResult<()> {
         let runtime = Runtime::new();
         let result = runtime.interpret(expr)?;
         println!("{}", result);
+        println!("runtime {:#?}", runtime);
         // let expr = analyzer::analyze(expr, runtime)?;
         // println!("analyze {:#?}", expr);
     }

@@ -4,25 +4,35 @@ use std::str::FromStr;
 
 pub type Symbol = String;
 
-pub fn is_qualified(s: &Symbol) -> bool {
-    s.contains('/')
+pub trait SymbolIntrospection {
+    type Item;
+    fn is_qualified(&self) -> bool;
+    fn split_symbol(&self) -> NResult<(Self::Item, Self::Item)>;
+    fn name(&self) -> Self::Item;
+    fn namespace(&self) -> Option<Self::Item>;
 }
 
-pub fn split_symbol(s: &Symbol) -> NResult<(Symbol, Symbol)> {
-    if let Some(index) = s.find(|c| c == '/') {
-        let (namespace, name) = s.split_at(index);
-        Ok((namespace.into(), name.into()))
-    } else {
-        runtime_issue("Invalid symbol")
+impl SymbolIntrospection for Symbol {
+    type Item = Symbol;
+
+    fn is_qualified(&self) -> bool {
+        self.contains('/')
     }
-}
+    fn split_symbol(&self) -> NResult<(Symbol, Symbol)> {
+        if let Some(index) = self.find(|c| c == '/') {
+            let (namespace, name) = self.split_at(index + 1);
+            Ok((namespace.into(), name.into()))
+        } else {
+            runtime_issue("Invalid symbol")
+        }
+    }
 
-pub fn name(s: &Symbol) -> Symbol {
-    split_symbol(s).map(|(_, n)| n).unwrap_or(s.clone())
-}
-
-pub fn namespace(s: &Symbol) -> Symbol {
-    split_symbol(s).map(|(ns, _)| ns).unwrap_or(s.clone())
+    fn name(&self) -> Symbol {
+        self.split_symbol().map(|(_, n)| n).unwrap_or(self.clone())
+    }
+    fn namespace(&self) -> Option<Symbol> {
+        self.split_symbol().map(|(ns, _)| ns).ok()
+    }
 }
 
 pub type Number = f32;
