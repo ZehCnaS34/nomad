@@ -4,7 +4,9 @@ use std::fmt;
 use std::str::FromStr;
 use im::Vector;
 
+// type aliases
 pub type Symbol = String;
+pub type Number = f32;
 
 pub trait SymbolIntrospection {
     type Item;
@@ -40,7 +42,6 @@ impl SymbolIntrospection for Symbol {
     }
 }
 
-pub type Number = f32;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ParseValueError {
@@ -70,6 +71,7 @@ struct Function {}
 
 #[derive(Debug, Clone)]
 pub enum Value {
+    Form(String),
     String(String),
     Number(Number),
     Symbol(Symbol),
@@ -89,6 +91,7 @@ impl fmt::Display for Value {
             Keyword(value) => write!(f, "{}", value),
             Lookup(value) => write!(f, "{}", value),
             Boolean(value) => write!(f, "{}", value),
+            Form(value) => write!(f, "{}", value),
             Nil => write!(f, "nil"),
         }
     }
@@ -136,7 +139,7 @@ impl FromStr for Value {
 }
 
 impl Value {
-    pub fn get_symbol(self) -> NResult<Symbol> {
+    pub fn take_symbol(self) -> NResult<Symbol> {
         if let Value::Symbol(symbol) = self {
             Ok(symbol)
         } else {
@@ -144,7 +147,7 @@ impl Value {
             runtime_issue("Failed to resolve to symbol")
         }
     }
-    pub fn get_number(self) -> NResult<Number> {
+    pub fn take_number(self) -> NResult<Number> {
         if let Value::Number(number) = self {
             Ok(number)
         } else {
@@ -206,7 +209,7 @@ pub fn print_ast(expr: &Expr) {
 }
 
 impl Expr {
-    pub fn get_atom(self) -> NResult<Value> {
+    pub fn take_atom(self) -> NResult<Value> {
         if let Expr::Atom(value) = self {
             Ok(value)
         } else {

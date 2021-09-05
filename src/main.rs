@@ -8,6 +8,10 @@ mod scanner;
 mod token;
 mod util;
 mod view;
+mod cursor;
+
+use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 use crate::result::{issue, runtime_issue, NResult};
 use crate::rt::Runtime;
 use context::Context;

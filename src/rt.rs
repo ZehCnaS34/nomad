@@ -2,6 +2,7 @@ use crate::ast::{Expr, Symbol, SymbolIntrospection, Value};
 use crate::result::{issue, runtime_issue, NResult};
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::borrow::BorrowMut;
 
 fn take_2<T, S: Clone + Into<String>>(args: Vec<T>, s: S) -> NResult<(T, T)> {
     let mut args = args.into_iter();
@@ -49,7 +50,8 @@ fn take_3<T, S: Clone + Into<String>>(args: Vec<T>, s: S) -> NResult<(T, T, T)> 
 
 const BLOCK: &'static str = "nomad.core/block";
 const DEF: &'static str = "nomad.core/def";
-const DIVIDE: &'static str = "nomad.core//"; // this looks ugly
+const DIVIDE: &'static str = "nomad.core//";
+// this looks ugly
 const DO: &'static str = "nomad.core/do";
 const EQ: &'static str = "nomad.core/=";
 const GT: &'static str = "nomad.core/>";
@@ -79,35 +81,40 @@ impl Scope {
 
 #[derive(Debug)]
 pub struct Namespace {
-    pub parent: Option<Box<Namespace>>,
+    pub parent: Option<Symbol>,
     pub name: Symbol,
     pub aliases: HashMap<Symbol, Symbol>,
     pub bindings: HashMap<String, Value>,
+    pub locals: HashMap<Symbol, Value>,
 }
 
 impl Namespace {
-    fn core() -> Namespace {
+    fn new<S: Into<String>>(name: S) -> Namespace {
         Namespace {
             parent: None,
-            name: "nomad.core".into(),
+            name: name.into(),
             aliases: HashMap::new(),
             bindings: HashMap::new(),
+            locals: HashMap::new(),
         }
-        .define_str(BLOCK)
-        .define_str(DEF)
-        .define_str(DIVIDE)
-        .define_str(DO)
-        .define_str(EQ)
-        .define_str(GT)
-        .define_str(IF)
-        .define_str(LET)
-        .define_str(LT)
-        .define_str(MINUS)
-        .define_str(MOD)
-        .define_str(MULT)
-        .define_str(PLUS)
-        .define_str(PRINTLN)
-        .define_str(WHILE)
+    }
+    fn core() -> Namespace {
+        Namespace::new("nomad.core")
+            .define_str(BLOCK)
+            .define_str(DEF)
+            .define_str(DIVIDE)
+            .define_str(DO)
+            .define_str(EQ)
+            .define_str(GT)
+            .define_str(IF)
+            .define_str(LET)
+            .define_str(LT)
+            .define_str(MINUS)
+            .define_str(MOD)
+            .define_str(MULT)
+            .define_str(PLUS)
+            .define_str(PRINTLN)
+            .define_str(WHILE)
     }
 
     fn get(&self, symbol: &Symbol) -> NResult<&Value> {
@@ -152,13 +159,29 @@ impl Runtime {
         namespace.name.clone()
     }
 
-    fn push_scope(&mut self) {}
+    fn ns_count(&self) -> usize {
+        self.namespaces.borrow().len()
+    }
 
-    fn pop_scope(&mut self) {}
+    fn push_scope(&self) -> NResult<()> {
+        let count = self.ns_count();
+        self.using_namespace(self.current_namespace(), |parent| {
+            let child_name = format!("{}.scope_{}", parent.name.clone(), count);
+            let child = Namespace::new(child_name);
+            let mut namespaces = self.namespaces.borrow_mut();
+            namespaces.insert(0, child);
+            Ok(Value::Nil)
+        }).and(Ok(()))
+    }
 
-    pub fn with_namespace<Action>(&self, ns: Symbol, action: Action) -> NResult<Value>
-    where
-        Action: Fn(&Namespace) -> NResult<Value>,
+    fn pop_scope(&self) {
+        let mut namespaces = self.namespaces.borrow_mut();
+        namespaces.remove(0);
+    }
+
+    pub fn using_namespace<Action>(&self, ns: Symbol, action: Action) -> NResult<Value>
+        where
+            Action: Fn(&Namespace) -> NResult<Value>,
     {
         let namespaces = self.namespaces.borrow();
         for namespace in namespaces.iter() {
@@ -169,9 +192,9 @@ impl Runtime {
         Err(issue("failed to resolve namespace"))
     }
 
-    pub fn with_mut_namespace<Action>(&self, ns: Symbol, mut action: Action) -> NResult<Value>
-    where
-        Action: FnMut(&mut Namespace) -> NResult<Value>,
+    pub fn using_mut_namespace<Action>(&self, ns: Symbol, mut action: Action) -> NResult<Value>
+        where
+            Action: FnMut(&mut Namespace) -> NResult<Value>,
     {
         let mut namespaces = self.namespaces.borrow_mut();
         for namespace in namespaces.iter_mut() {
@@ -191,11 +214,11 @@ impl Runtime {
     }
 
     pub fn resolve<Action>(&self, symbol: Symbol, action: Action) -> NResult<Value>
-    where
-        Action: Fn(Value) -> NResult<Value>,
+        where
+            Action: Fn(Value) -> NResult<Value>,
     {
         let (ns, n) = self.inflate_symbol(symbol);
-        self.with_namespace(ns, |namespace| {
+        self.using_namespace(ns, |namespace| {
             let value = namespace
                 .bindings
                 .get(&n)
@@ -206,7 +229,7 @@ impl Runtime {
 
     pub fn define(&self, name: Symbol, value: Option<Value>) -> NResult<Value> {
         let (ns, n) = self.inflate_symbol(name);
-        self.with_mut_namespace(ns, move |namespace| {
+        self.using_mut_namespace(ns, move |namespace| {
             namespace.define(n.clone(), value.clone().unwrap());
             Ok(Value::Nil)
         })
@@ -312,7 +335,7 @@ impl Runtime {
             Expr::Invoke(f, args) => {
                 let f = self
                     .interpret(*f)?
-                    .get_symbol()
+                    .take_symbol()
                     .or(Err(issue("Must resolve to something invocable")))?;
                 match f.as_str() {
                     PLUS => {
@@ -456,8 +479,8 @@ impl Runtime {
                     DEF => {
                         let (name, value) = take_2(args, "Def")?;
                         let name = name
-                            .get_atom()?
-                            .get_symbol()
+                            .take_atom()?
+                            .take_symbol()
                             .or(runtime_issue("Slot one of def should be a symbol."))?;
                         let value = self.interpret(value)?;
                         self.define(name, Some(value))
