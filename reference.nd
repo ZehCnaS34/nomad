@@ -2,7 +2,7 @@
 (println name)
 {
     (let name "raul")
-    (println name)
+    (println name, age)
     {
         (let name "sanchez")
         (println name)
@@ -13,3 +13,5 @@
 {
     (println "Hello, World")
 }
+
+simple.name/is.simple

@@ -6,6 +6,7 @@
 (
     while (< 1 param)
 
+    , simple
     (def awesome "name")
 
     ;; (
