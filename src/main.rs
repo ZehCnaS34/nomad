@@ -8,13 +8,13 @@ mod util;
 
 use crate::list::List;
 use crate::parser::{parse, Atom, Expr};
-use crate::scanner::{scan, Token, TokenKind};
+use crate::scanner::{Scanner, Token, TokenKind};
 use std::cell::Cell;
 use std::fs::read_to_string;
 use std::io;
 use std::str::FromStr;
 
-const SOURCE_FILE: &'static str = "fib.nd";
+const SOURCE_FILE: &'static str = "fact.nd";
 
 struct Environment {}
 
@@ -106,9 +106,10 @@ struct MainResult;
 
 fn main() -> Result<(), MainResult> {
     let source = read_to_string(SOURCE_FILE).expect("Failed to read source file");
-    let tokens = scan(&source);
-    let expressions = parse(tokens).ok_or(MainResult)?;
-    let mut environment = Environment::new();
-    let value = interpret(expressions, &mut environment);
+    let tokens = Scanner::scan(source).ok_or(MainResult)?;
+    println!("{:#?}", tokens);
+    // let expressions = parse(tokens).ok_or(MainResult)?;
+    // let mut environment = Environment::new();
+    // let value = interpret(expressions, &mut environment);
     Ok(())
 }
