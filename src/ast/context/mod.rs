@@ -14,6 +14,7 @@ pub enum FirstNodeAction {
     ReverseIndex,
     Index,
     IfExpression,
+    WhileExpression,
 }
 
 pub struct Context {
@@ -34,14 +35,11 @@ impl Context {
     pub fn match_form(&self, node: &node::Node) -> FirstNodeAction {
         match node {
             Node::Atom(atom) => match atom {
-                AtomNode::Symbol(symbol) => {
-                    println!("{:?}", symbol);
-                    self
-                        .symbol_actions
-                        .get(symbol)
-                        .map(|action| action.clone())
-                        .unwrap_or(FirstNodeAction::FunctionCall)
-                },
+                AtomNode::Symbol(symbol) => self
+                    .symbol_actions
+                    .get(symbol)
+                    .map(|action| action.clone())
+                    .unwrap_or(FirstNodeAction::FunctionCall),
                 AtomNode::Integer(_) => FirstNodeAction::ReverseIndex,
                 AtomNode::String(_) => FirstNodeAction::Index,
                 kind => {

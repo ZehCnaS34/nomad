@@ -1,0 +1,6 @@
+(def sum 0)
+
+(while (< sum 100000)
+  (println sum)
+  (def sum (+ sum 1))
+)

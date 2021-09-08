@@ -1,6 +1,8 @@
-use std::fmt;
-use crate::ast::node::Node;
 use crate::ast::node::atom_node::Symbol;
+use crate::ast::node::Node;
+use crate::runtime::{Execution, Runtime};
+use crate::value::NValue;
+use std::fmt;
 use std::vec::IntoIter;
 
 pub enum Error {
@@ -11,7 +13,7 @@ pub enum Error {
 
 pub type Result = std::result::Result<DefinitionNode, Error>;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct DefinitionNode {
     pub var: Symbol,
     pub value: Box<Node>,
@@ -35,5 +37,13 @@ impl DefinitionNode {
 impl fmt::Display for DefinitionNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{} = {}", self.var, self.value)
+    }
+}
+
+impl Execution for DefinitionNode {
+    fn execute(&self, runtime: &mut Runtime) -> NValue {
+        let value = runtime.execute(self.value.as_ref());
+        runtime.define(self.var.clone(), value);
+        NValue::Nil
     }
 }

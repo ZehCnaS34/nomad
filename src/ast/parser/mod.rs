@@ -1,19 +1,21 @@
 use super::context::Context;
 use super::node::atom_node;
 use super::node::atom_node::{AtomNode, ParseError};
-use super::node::function_node::FunctionCallNode;
 use super::node::def_node;
 use super::node::def_node::DefinitionNode;
+use super::node::function_node::FunctionCallNode;
+use super::node::while_node::WhileNode;
 use super::node::Node;
 use super::scanner::token::{Kind, Token};
 use crate::ast::context::FirstNodeAction;
+use crate::ast::context::FirstNodeAction::IfExpression;
 use crate::ast::node::atom_node::Symbol;
+use crate::ast::node::if_node::IfNode;
 use crate::list::List;
 use std::cell::Cell;
 use std::str::FromStr;
-use crate::ast::context::FirstNodeAction::IfExpression;
-use crate::ast::node::if_node::IfNode;
 
+#[derive(Debug)]
 pub enum Error {
     UnexpectedEof,
     ExpectedClosingParen,
@@ -89,17 +91,29 @@ impl Parser {
                     FirstNodeAction::IfExpression => {
                         let condition = nodes.next().ok_or(Error::IfMissingCondition)?;
                         let true_branch = nodes.next().ok_or(Error::IfMissingTrueBranch)?;
-                        Ok(Node::If(IfNode {
+                        let result = Ok(Node::If(IfNode {
                             condition: Box::new(condition),
                             true_branch: Box::new(true_branch),
-                            false_branch: Box::new(nodes.next().unwrap_or(Node::Atom(AtomNode::Nil))),
-                        }))
+                            false_branch: Box::new(
+                                nodes.next().unwrap_or(Node::Atom(AtomNode::Nil)),
+                            ),
+                        }));
+                        println!("result {:#?}", result);
+                        result
                     }
                     FirstNodeAction::FunctionCall => {
                         let arguments: Vec<_> = nodes.collect();
                         Ok(Node::FunctionCall(FunctionCallNode {
                             function: Box::new(function),
                             arguments,
+                        }))
+                    }
+                    FirstNodeAction::WhileExpression => {
+                        let condition = nodes.next().ok_or(Error::IfMissingCondition)?;
+                        let body: Vec<_> = nodes.collect();
+                        Ok(Node::While(WhileNode {
+                            condition: Box::new(condition),
+                            body,
                         }))
                     }
                     action => panic!("unsupported first node action {:?}", action),
@@ -128,6 +142,7 @@ pub fn parse(tokens: Vec<Token>) -> Result<Vec<Node>> {
     let def_form: Symbol = "def".into();
     let if_form: Symbol = "if".into();
     let fn_form: Symbol = "fn".into();
+    let while_form: Symbol = "while".into();
     let mut nodes = vec![];
     let mut parser = Parser {
         context: Context::new(),
@@ -138,10 +153,18 @@ pub fn parse(tokens: Vec<Token>) -> Result<Vec<Node>> {
             .collect(),
     };
 
-    parser.context.set_form(def_form, FirstNodeAction::Definition);
-    parser.context.set_form(if_form, FirstNodeAction::IfExpression);
-    parser.context.set_form(fn_form, FirstNodeAction::FunctionDefinition);
-
+    parser
+        .context
+        .set_form(def_form, FirstNodeAction::Definition);
+    parser
+        .context
+        .set_form(if_form, FirstNodeAction::IfExpression);
+    parser
+        .context
+        .set_form(fn_form, FirstNodeAction::FunctionDefinition);
+    parser
+        .context
+        .set_form(while_form, FirstNodeAction::WhileExpression);
 
     while let Some(token) = parser.peek() {
         match token.kind {

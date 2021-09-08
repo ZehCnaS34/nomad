@@ -1,7 +1,10 @@
+use crate::runtime::{Execution, Runtime};
+use crate::value::NValue;
 use std::fmt;
+use std::ops::Deref;
 use std::str::FromStr;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AtomNode {
     Nil,
     Rational(f64),
@@ -9,6 +12,7 @@ pub enum AtomNode {
     Boolean(bool),
     Symbol(Symbol),
     String(String),
+    Var(Var),
 }
 
 impl fmt::Display for AtomNode {
@@ -20,8 +24,14 @@ impl fmt::Display for AtomNode {
             AtomNode::Boolean(b) => write!(f, "{}", b),
             AtomNode::Symbol(s) => write!(f, "{}", s),
             AtomNode::String(s) => write!(f, "{:?}", s),
+            AtomNode::Var(s) => write!(f, "{:?}", s),
         }
     }
+}
+
+#[derive(Clone, Debug, PartialEq, Hash, Eq)]
+pub struct Var {
+    literal: String,
 }
 
 pub enum ParseError {
@@ -35,7 +45,7 @@ impl FromStr for AtomNode {
         if atom == "nil" {
             Ok(AtomNode::Nil)
         } else if atom == "true" {
-            Ok(AtomNode::Boolean(false))
+            Ok(AtomNode::Boolean(true))
         } else if atom == "false" {
             Ok(AtomNode::Boolean(false))
         } else if atom.starts_with('"') {
@@ -45,6 +55,20 @@ impl FromStr for AtomNode {
             Ok(AtomNode::Rational(value))
         } else {
             Ok(AtomNode::Symbol(atom.into()))
+        }
+    }
+}
+
+impl Execution for AtomNode {
+    fn execute(&self, runtime: &mut Runtime) -> NValue {
+        match self {
+            AtomNode::Symbol(symbol) => runtime.resolve(symbol),
+            AtomNode::Rational(number) => NValue::NNumber(Box::new(*number)),
+            AtomNode::Integer(number) => NValue::NNumber(Box::new((*number) as f64)),
+            AtomNode::String(string) => NValue::NString(string.clone()),
+            AtomNode::Nil => NValue::Nil,
+            AtomNode::Boolean(bool) => NValue::NBoolean(*bool),
+            _ => NValue::Nil,
         }
     }
 }
@@ -101,6 +125,7 @@ impl Symbol {
 #[cfg(test)]
 mod test {
     use super::*;
+
     #[test]
     fn properly_inspect_symbol_name() {
         let sym: Symbol = "awesome".into();

@@ -5,6 +5,7 @@ mod list;
 mod runtime;
 mod tree;
 mod util;
+mod value;
 
 use crate::ast::parser;
 use crate::ast::parser::parse;
@@ -15,7 +16,10 @@ use std::fs::read_to_string;
 use std::io;
 use std::str::FromStr;
 
-const SOURCE_FILE: &'static str = "./collatz.nd";
+use crate::value::{Function, NValue};
+use runtime::Runtime;
+
+const SOURCE_FILE: &'static str = "./core.nd";
 
 struct Environment {}
 
@@ -32,9 +36,18 @@ fn main() -> Result<(), MainResult> {
     let source = read_to_string(SOURCE_FILE).expect("Failed to read source file");
     let tokens = Scanner::scan(source).ok_or(MainResult)?;
     let expressions = parse(tokens)?;
+    let mut runtime = Runtime::new();
+    runtime.define("*".into(), NValue::NFunction(Function::Multiplication));
+    runtime.define("+".into(), NValue::NFunction(Function::Addition));
+    runtime.define("-".into(), NValue::NFunction(Function::Subtraction));
+    runtime.define("/".into(), NValue::NFunction(Function::Division));
+    runtime.define("<".into(), NValue::NFunction(Function::LessThan));
+    runtime.define(">".into(), NValue::NFunction(Function::GreaterThan));
+    runtime.define("println".into(), NValue::NFunction(Function::Println));
     for e in &expressions {
-        println!("{:#?}", e);
+        let result = runtime.execute(e);
     }
+    // println!("{:#?}", runtime);
     // let mut environment = Environment::new();
     // let value = interpret(expressions, &mut environment);
     Ok(())
