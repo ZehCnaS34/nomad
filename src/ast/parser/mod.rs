@@ -54,6 +54,7 @@ pub enum NodeKind {
     Call,
     Program,
     Vector,
+    Let,
     Do,
 }
 
@@ -73,6 +74,7 @@ impl fmt::Debug for Tag {
             NodeKind::Program => write!(f, "[program::{}]", self.value),
             NodeKind::Vector => write!(f, "[vector::{}]", self.value),
             NodeKind::Do => write!(f, "[do::{}]", self.value),
+            NodeKind::Let => write!(f, "[let::{}]", self.value),
             NodeKind::If => write!(f, "[if::{}]", self.value),
         }
     }
@@ -98,6 +100,10 @@ pub enum Node {
     },
     Vector {
         expressions: Vec<Tag>,
+    },
+    Let {
+        bindings: Tag,  
+        body: Vec<Tag>,
     },
     Do {
         expressions: Vec<Tag>,
@@ -127,6 +133,13 @@ impl<'a> Iterator for AstIter<'a> {
         self.queue.pop_front().and_then(|tag| {
             self.ast.get(&tag).and_then(|node| match &node {
                 Node::Atom(atom) => Some((tag, atom)),
+                Node::Let { bindings, body } => {
+                    self.queue.push_back(*bindings);
+                    for e in body {
+                        self.queue.push_back(*e);
+                    }
+                    self.next()
+                }
                 Node::While { condition, body } => {
                     self.queue.push_back(*condition);
                     for e in body {
@@ -229,6 +242,10 @@ impl Parser {
     fn submit(&self, node: Node) -> Tag {
         let mut ast = self.ast.lock().unwrap();
         let id = match &node {
+            Node::Let { .. } => Tag {
+                kind: NodeKind::Let,
+                value: ast.len(),
+            },
             Node::Do { .. } => Tag {
                 kind: NodeKind::Do,
                 value: ast.len(),
@@ -294,6 +311,7 @@ impl Parser {
                         "if" => NodeKind::If,
                         "while" => NodeKind::While,
                         "do" => NodeKind::Do,
+                        "let" => NodeKind::Let,
                         _ => NodeKind::Call,
                     },
                     _ => NodeKind::Call,
@@ -347,8 +365,16 @@ impl Parser {
                 function,
                 arguments: nodes.collect(),
             })),
+            NodeKind::Let => {
+                let bindings = nodes.next().unwrap();
+                let body: Vec<_> = nodes.collect();
+                Ok(self.submit(Node::Let {
+                    bindings: bindings,
+                    body,
+                }))
+            }
             kind => {
-                panic!("What is this {:?}")
+                panic!("Fuck {:?}", kind);
             }
         }
     }

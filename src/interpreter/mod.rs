@@ -188,9 +188,9 @@ impl Env {
                     }
                 }
             }
-            Node::Vector { .. } => {
-                println!("vector");
-                AtomNode::Nil
+            Node::Vector { expressions } => {
+                let nodes: Vec<_> = expressions.iter().map(|tag| self.eval(*tag)).collect();
+                AtomNode::Vector(nodes)
             }
             Node::Do { expressions } => {
                 let mut value = AtomNode::Nil;
@@ -199,9 +199,18 @@ impl Env {
                 }
                 value
             }
-            Node::If { .. } => {
-                println!("if");
-                AtomNode::Nil
+            Node::Let { bindings, body } => {
+                let bindings = self.eval(*bindings);
+                println!("bindings {:?}", bindings);
+                println!("body {:?}", body);
+                panic!("bindings");
+            }
+            Node::If { condition, then, otherwise } => {
+                if self.eval(*condition).is_truthy() {
+                    self.eval(*then)
+                } else {
+                    self.eval(*otherwise)
+                }
             }
             Node::Program { expressions } => {
                 let mut value = AtomNode::Nil;
@@ -223,5 +232,4 @@ impl Env {
 pub fn interpret(ast: AST) {
     let env = Env::new(ast);
     env.run();
-    println!("env {:?}", env.values);
 }

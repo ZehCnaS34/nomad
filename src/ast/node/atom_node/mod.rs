@@ -10,6 +10,7 @@ pub enum AtomNode {
     Boolean(bool),
     Symbol(Symbol),
     String(String),
+    Vector(Vec<AtomNode>),
     Var(Var),
 }
 
@@ -23,6 +24,7 @@ impl fmt::Debug for AtomNode {
             AtomNode::Symbol(s) => write!(f, "{}", s),
             AtomNode::String(s) => write!(f, "{:?}", s),
             AtomNode::Var(s) => write!(f, "{:?}", s),
+            AtomNode::Vector(s) => write!(f, "{:?}", s),
         }
     }
 }
@@ -37,6 +39,7 @@ impl fmt::Display for AtomNode {
             AtomNode::Symbol(s) => write!(f, "{}", s),
             AtomNode::String(s) => write!(f, "{:?}", s),
             AtomNode::Var(s) => write!(f, "{:?}", s),
+            AtomNode::Vector(s) => write!(f, "{:?}", s),
         }
     }
 }
