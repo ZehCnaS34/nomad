@@ -24,7 +24,9 @@ trait Operation {
     fn sub(&self, lhs: &Self) -> Self;
     fn mul(&self, lhs: &Self) -> Self;
     fn div(&self, lhs: &Self) -> Self;
+    fn eq(&self, lhs: &Self) -> Self;
     fn lt(&self, lhs: &Self) -> Self;
+    fn gt(&self, lhs: &Self) -> Self;
 }
 
 impl Operation for AtomNode {
@@ -65,6 +67,26 @@ impl Operation for AtomNode {
         match (self, lhs) {
             (Integer(a), Integer(b)) => Integer(a / b),
             (Rational(a), Rational(b)) => Rational(a / b),
+            _ => panic!("fuck"),
+        }
+    }
+
+    fn eq(&self, lhs: &Self) -> Self {
+        use AtomNode::String as Str;
+        use AtomNode::{Integer, Rational, Boolean};
+        match (self, lhs) {
+            (Integer(a), Integer(b)) => Boolean(a == b),
+            (Rational(a), Rational(b)) => Boolean(a == b),
+            _ => panic!("fuck"),
+        }
+    }
+
+    fn gt(&self, lhs: &Self) -> Self {
+        use AtomNode::String as Str;
+        use AtomNode::{Integer, Rational, Boolean};
+        match (self, lhs) {
+            (Integer(a), Integer(b)) => Boolean(a > b),
+            (Rational(a), Rational(b)) => Boolean(a > b),
             _ => panic!("fuck"),
         }
     }
@@ -136,6 +158,8 @@ impl Env {
             } => {
                 let function = self.eval(*function);
                 let function = function.take_symbol().unwrap();
+                // TODO: Move this closer to the resolution stage. 
+                // This allows short circuiting of expressions
                 let arguments: Vec<_> = arguments
                     .iter()
                     .map(|tag| {
@@ -159,6 +183,15 @@ impl Env {
                         print!("\n");
                         AtomNode::Nil
                     }
+                    "-" => {
+                        let mut items = arguments.into_iter();
+                        let mut difference = items.next().unwrap();
+                        for current in items {
+                            difference = difference.sub(&current);
+
+                        }
+                        difference
+                    }
                     "+" => {
                         let mut items = arguments.into_iter();
                         let mut sum = items.next().unwrap();
@@ -168,16 +201,46 @@ impl Env {
                         }
                         sum
                     }
+                    "=" => {
+                        let mut flag = true;
+                        let mut items = arguments.into_iter();
+                        let mut last = items.next().unwrap();
+                        for current in items {
+                            if last.eq(&current).is_truthy() {
+                                last = current;
+                            } else {
+                                flag = false;
+                                break;
+                            }
+
+                        }
+                        AtomNode::Boolean(flag)
+                    }
+                    ">" => {
+                        let mut flag = true;
+                        let mut items = arguments.into_iter();
+                        let mut last = items.next().unwrap();
+                        for current in items {
+                            if last.gt(&current).is_truthy() {
+                                last = current;
+                            } else {
+                                flag = false;
+                                break;
+                            }
+
+                        }
+                        AtomNode::Boolean(flag)
+                    }
                     "<" => {
                         let mut flag = true;
                         let mut items = arguments.into_iter();
                         let mut last = items.next().unwrap();
                         for current in items {
-                            if !last.lt(&current).is_truthy() {
+                            if last.lt(&current).is_truthy() {
+                                last = current;
+                            } else {
                                 flag = false;
                                 break;
-                            } else {
-                                last = current;
                             }
 
                         }

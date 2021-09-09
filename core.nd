@@ -1,13 +1,15 @@
-(def sum 0)
+;; (def sum 0)
+;; 
+;; (while (< sum 100)
+;;   (println sum)
+;;   (if (< sum 50)
+;;     (do
+;;       (def sum (+ sum 5)))
+;;     (do
+;;       (def sum (+ sum 0.5 0.5)))))
+;; 
+;; (println "done")
+;; 
+;; (let [value 23])
 
-(while (< sum 100)
-  (println sum)
-  (if (< sum 50)
-    (do
-      (def sum (+ sum 5)))
-    (do
-      (def sum (+ sum 0.5 0.5)))))
-
-(println "done")
-
-(let [value 23])
+(= 1 1)
