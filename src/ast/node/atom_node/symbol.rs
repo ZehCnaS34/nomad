@@ -10,7 +10,7 @@ impl fmt::Display for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         use Symbol::*;
         match self {
-            Qualified {name, namespace} => write!(f, "{}/{}", name, namespace),
+            Qualified { name, namespace } => write!(f, "{}/{}", name, namespace),
             UnQualified { name } => write!(f, "{}", name),
         }
     }
@@ -19,14 +19,18 @@ impl fmt::Display for Symbol {
 impl From<&str> for Symbol {
     fn from(value: &str) -> Symbol {
         if value.len() == 1 {
-            Symbol::UnQualified { name: String::from(value) }
+            Symbol::UnQualified {
+                name: String::from(value),
+            }
         } else if let Some(index) = value.find('/') {
             Symbol::Qualified {
-                name: String::from(&value[index+1..]),
+                name: String::from(&value[index + 1..]),
                 namespace: String::from(&value[..index]),
             }
         } else {
-            Symbol::UnQualified { name: String::from(value) }
+            Symbol::UnQualified {
+                name: String::from(value),
+            }
         }
     }
 }

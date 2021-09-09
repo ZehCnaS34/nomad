@@ -1,6 +1,13 @@
-(def sum 0)
+1 2 3
 
-(while (< sum 100000)
-  (println sum)
-  (def sum (+ sum 1))
-)
+23 4 2
+
+name
+
+name/age
+
+clojure.core
+
+(def name "alex")
+
+(while (< 1 2))

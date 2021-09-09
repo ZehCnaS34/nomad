@@ -73,12 +73,42 @@ impl Parser {
             }
             nodes.push(self.expression()?);
         }
+        println!("{:?}", nodes);
         match nodes.len() {
             0 => {
                 todo!()
             }
             n => {
-                todo!();
+                let mut nodes = nodes.into_iter();
+                let head = nodes.next().ok_or(Error::UnexpectedEof)?;
+                match head {
+                    Node::Atom(atom) => match atom {
+                        AtomNode::Symbol(symbol) => match symbol {
+                            Symbol::UnQualified { name } => match &name[..] {
+                                "def" => {
+                                    Ok(Node::Definition(DefinitionNode::from_into_iter(nodes)?))
+                                }
+                                name => Ok(Node::FunctionCall(FunctionCallNode {
+                                    function: Box::new(Node::Atom(AtomNode::Symbol(Symbol::from(
+                                        name,
+                                    )))),
+                                    arguments: nodes.collect(),
+                                })),
+                            },
+                            symbol => Ok(Node::FunctionCall(FunctionCallNode {
+                                function: Box::new(Node::Atom(AtomNode::Symbol(symbol))),
+                                arguments: nodes.collect(),
+                            })),
+                        },
+                        atom => {
+                            todo!("We need to handle indexing from atoms");
+                        }
+                    },
+                    node => Ok(Node::FunctionCall(FunctionCallNode {
+                        function: Box::new(node),
+                        arguments: nodes.collect(),
+                    })),
+                }
             }
         }
     }
