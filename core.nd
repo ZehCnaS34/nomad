@@ -1,4 +1,4 @@
-1 2 3
+(def sum 0)
 
 (while (< sum 100)
   (println "awesome" sum)
