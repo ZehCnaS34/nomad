@@ -1,6 +1,8 @@
+pub mod symbol;
 use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
+pub use symbol::Symbol;
 
 #[derive(Clone)]
 pub enum AtomNode {

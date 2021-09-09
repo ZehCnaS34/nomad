@@ -8,6 +8,7 @@ use super::node::def_node;
 use super::node::def_node::DefinitionNode;
 use super::node::function_node::FunctionCallNode;
 use super::node::while_node::WhileNode;
+use super::node::Node;
 use super::scanner::token::{Kind, Token};
 use std::fmt;
 
