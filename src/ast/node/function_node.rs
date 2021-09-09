@@ -32,4 +32,3 @@ pub enum FunctionNode {
         body: Vec<Node>,
     },
 }
-

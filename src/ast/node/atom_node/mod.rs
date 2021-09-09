@@ -2,7 +2,7 @@ use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum AtomNode {
     Nil,
     Rational(f64),
@@ -11,6 +11,20 @@ pub enum AtomNode {
     Symbol(Symbol),
     String(String),
     Var(Var),
+}
+
+impl fmt::Debug for AtomNode {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AtomNode::Nil => write!(f, "nil"),
+            AtomNode::Rational(n) => write!(f, "{}", n),
+            AtomNode::Integer(i) => write!(f, "{}", i),
+            AtomNode::Boolean(b) => write!(f, "{}", b),
+            AtomNode::Symbol(s) => write!(f, "{}", s),
+            AtomNode::String(s) => write!(f, "{:?}", s),
+            AtomNode::Var(s) => write!(f, "{:?}", s),
+        }
+    }
 }
 
 impl fmt::Display for AtomNode {
@@ -23,6 +37,28 @@ impl fmt::Display for AtomNode {
             AtomNode::Symbol(s) => write!(f, "{}", s),
             AtomNode::String(s) => write!(f, "{:?}", s),
             AtomNode::Var(s) => write!(f, "{:?}", s),
+        }
+    }
+}
+
+impl AtomNode {
+    pub fn as_symbol(&self) -> Option<&Symbol> {
+        match self {
+            AtomNode::Symbol(symbol) => Some(symbol),
+            _ => None,
+        }
+    }
+    pub fn take_symbol(self) -> Option<Symbol> {
+        match self {
+            AtomNode::Symbol(symbol) => Some(symbol),
+            _ => None,
+        }
+    }
+
+    pub fn is_symbol(&self) -> bool {
+        match self {
+            AtomNode::Symbol(symbol) => true,
+            _ => false,
         }
     }
 }
@@ -57,10 +93,15 @@ impl FromStr for AtomNode {
     }
 }
 
-
-#[derive(Clone, Debug, PartialEq, Hash, Eq)]
+#[derive(Clone, PartialEq, Hash, Eq)]
 pub struct Symbol {
     literal: String,
+}
+
+impl fmt::Debug for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.literal)
+    }
 }
 
 impl fmt::Display for Symbol {

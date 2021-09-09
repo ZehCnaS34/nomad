@@ -1,6 +1,8 @@
 (def sum 0)
 
-(while (< sum 100000)
-  (println sum)
+(while (< sum 100)
+  (println "awesome" sum)
   (def sum (+ sum 1))
 )
+
+(println "done")

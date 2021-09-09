@@ -4,4 +4,3 @@ use super::Node;
 pub struct ListNode {
     items: Vec<Node>,
 }
-
