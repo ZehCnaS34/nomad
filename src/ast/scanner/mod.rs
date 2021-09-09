@@ -1,7 +1,6 @@
 mod span;
 pub mod token;
 
-use crate::util::Matcher;
 use span::Span;
 use std::cell::Cell;
 use token::{Kind, Token};
@@ -16,31 +15,6 @@ fn is_newline(c: char) -> bool {
 }
 fn is_quote(c: char) -> bool {
     '"' == c
-}
-
-impl Matcher for &Vec<char> {
-    type Item = char;
-    fn check_not(&self, offset: usize, value: char) -> bool {
-        offset < self.len() && self[offset] != value
-    }
-    fn check(&self, offset: usize, value: char) -> bool {
-        offset < self.len() && self[offset] == value
-    }
-    fn test<F>(&self, offset: usize, tester: F) -> bool
-    where
-        F: Fn(char) -> bool,
-    {
-        offset < self.len() && tester(self[offset])
-    }
-    fn check_next(&self, offset: usize, value: char) -> bool {
-        offset + 1 < self.len() && self[offset + 1] == value
-    }
-    fn test_next<F>(&self, offset: usize, tester: F) -> bool
-    where
-        F: Fn(char) -> bool,
-    {
-        offset + 1 < self.len() && tester(self[offset + 1])
-    }
 }
 
 fn is_symbol_start(c: char) -> bool {

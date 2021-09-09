@@ -1,5 +1,3 @@
-use crate::runtime::{Execution, Runtime};
-use crate::value::NValue;
 use std::fmt;
 use std::ops::Deref;
 use std::str::FromStr;
@@ -59,19 +57,6 @@ impl FromStr for AtomNode {
     }
 }
 
-impl Execution for AtomNode {
-    fn execute(&self, runtime: &mut Runtime) -> NValue {
-        match self {
-            AtomNode::Symbol(symbol) => runtime.resolve(symbol),
-            AtomNode::Rational(number) => NValue::NNumber(Box::new(*number)),
-            AtomNode::Integer(number) => NValue::NNumber(Box::new((*number) as f64)),
-            AtomNode::String(string) => NValue::NString(string.clone()),
-            AtomNode::Nil => NValue::Nil,
-            AtomNode::Boolean(bool) => NValue::NBoolean(*bool),
-            _ => NValue::Nil,
-        }
-    }
-}
 
 #[derive(Clone, Debug, PartialEq, Hash, Eq)]
 pub struct Symbol {

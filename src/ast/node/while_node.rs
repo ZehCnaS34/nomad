@@ -1,6 +1,4 @@
 use crate::ast::node::Node;
-use crate::runtime::{Execution, Runtime};
-use crate::value::NValue;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -19,15 +17,3 @@ impl fmt::Display for WhileNode {
     }
 }
 
-impl Execution for WhileNode {
-    fn execute(&self, runtime: &mut Runtime) -> NValue {
-        let condition = self.condition.as_ref();
-        let body = &self.body;
-        while runtime.execute(condition).is_truthy() {
-            for node in body {
-                runtime.execute(node);
-            }
-        }
-        NValue::Nil
-    }
-}

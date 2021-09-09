@@ -1,7 +1,5 @@
 use crate::ast::node::atom_node::Symbol;
 use crate::ast::node::Node;
-use crate::runtime::{Execution, Runtime};
-use crate::value::NValue;
 use std::fmt;
 use std::vec::IntoIter;
 
@@ -40,10 +38,3 @@ impl fmt::Display for DefinitionNode {
     }
 }
 
-impl Execution for DefinitionNode {
-    fn execute(&self, runtime: &mut Runtime) -> NValue {
-        let value = runtime.execute(self.value.as_ref());
-        runtime.define(self.var.clone(), value);
-        NValue::Nil
-    }
-}
