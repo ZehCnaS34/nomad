@@ -37,4 +37,3 @@ impl fmt::Display for DefinitionNode {
         write!(f, "{} = {}", self.var, self.value)
     }
 }
-

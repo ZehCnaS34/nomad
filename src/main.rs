@@ -10,7 +10,6 @@ use std::fs::read_to_string;
 use std::io;
 use std::str::FromStr;
 
-
 const SOURCE_FILE: &'static str = "./core.nd";
 
 struct Environment {}
