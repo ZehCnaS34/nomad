@@ -1,7 +1,9 @@
 #![allow(warnings, unused)]
 
-mod ast;
-mod interpreter;
+#[macro_use]
+pub mod ast;
+pub mod interpreter;
+pub mod result;
 
 use crate::ast::parser;
 use crate::ast::parser::parse;
@@ -19,16 +21,11 @@ struct Environment {}
 #[derive(Debug)]
 struct MainResult;
 
-impl From<parser::Error> for MainResult {
-    fn from(error: parser::Error) -> MainResult {
-        MainResult
-    }
-}
-
 fn main() -> Result<(), MainResult> {
     let source = read_to_string(SOURCE_FILE).expect("Failed to read source file");
     let tokens = Scanner::scan(source).ok_or(MainResult)?;
-    let ast = parse(tokens)?;
+    let ast = parse(tokens).unwrap();
+    println!("{:#?}", ast);
     interpreter::interpret(ast);
     Ok(())
 }

@@ -1,39 +1,35 @@
-use crate::ast::node::atom_node::Symbol;
+use crate::ast::node::atom_node::{AtomNode, Symbol};
 use crate::ast::node::Node;
+use crate::ast::parser::Tag;
+use crate::ast::CHILD_LIMIT;
+use crate::interpreter::{Execute, Interpreter};
 use std::fmt;
 use std::vec::IntoIter;
 
-pub enum Error {
-    DefMissingIdent,
-    DefInvalidSymbol,
-    DefMissingValue,
-}
-
-pub type Result = std::result::Result<DefinitionNode, Error>;
-
-#[derive(Debug, Clone)]
+#[derive(Debug, Copy, Clone)]
 pub struct DefinitionNode {
-    pub var: Symbol,
-    pub value: Box<Node>,
+    ident: Tag,
+    value: Tag,
 }
 
 impl DefinitionNode {
-    pub fn from_into_iter(mut nodes: IntoIter<Node>) -> Result {
-        let var = nodes.next().ok_or(Error::DefMissingIdent)?;
-        let var = var.unwrap_symbol().ok_or(Error::DefInvalidSymbol)?;
-        if var.is_qualified() {
-            return Err(Error::DefInvalidSymbol);
-        }
-        let value = nodes.next().ok_or(Error::DefMissingValue)?;
-        Ok(DefinitionNode {
-            var,
-            value: Box::new(value),
-        })
+    pub fn from_tags(tags: &[Tag]) -> DefinitionNode {
+        let ident = tags[0];
+        let value = tags[1];
+        DefinitionNode { ident, value }
     }
 }
 
-impl fmt::Display for DefinitionNode {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{} = {}", self.var, self.value)
+impl Execute for DefinitionNode {
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
+        let ident = interpreter.intern_tag(self.ident);
+        ident.take_symbol().map(|symbol| {
+            if !symbol.is_qualified() {
+                let value = interpreter.intern_tag(self.value);
+                let value = interpreter.resolve(value);
+                println!("setting symbol {:?} to {:?}", symbol, value);
+                interpreter.define(symbol, value);
+            }
+        });
     }
 }

@@ -80,33 +80,35 @@ impl Span {
         self
     }
 
-    pub fn view<'s>(&self, source: &'s str) -> Option<&'s str> {
+    pub fn view<'s>(&self, source: &'s [char]) -> Option<String> {
         let (start, end) = self.get();
         if start != end && start >= 0 && end <= source.len() {
             self.set((end, end));
-            Some(&source[start..end])
+            let mut result = String::new();
+            for c in &source[start..end] {
+                result.push(*c);
+            }
+            Some(result)
         } else {
             None
         }
     }
 
-    pub fn peek_n(&self, source: &'_ str, n: usize) -> Option<char> {
+    pub fn peek_n(&self, source: &'_ [char], n: usize) -> Option<char> {
         let (_, end) = self.get();
         let end = end + n;
         if end < source.len() {
-            source
-                .get(end..end + 1)
-                .and_then(|view| view.chars().next())
+            source.get(end..end + 1).map(|view| view[0])
         } else {
             None
         }
     }
 
-    pub fn peek(&self, source: &'_ str) -> Option<char> {
+    pub fn peek(&self, source: &'_ [char]) -> Option<char> {
         self.peek_n(source, 0)
     }
 
-    pub fn advance(&self, source: &'_ str) -> Option<char> {
+    pub fn advance(&self, source: &'_ [char]) -> Option<char> {
         self.peek(source).map(|char| {
             self.left_grow();
             if char == '\n' {
@@ -138,60 +140,60 @@ mod test {
     fn it_should_look_view_into_source() {
         let span = Span::new();
         span.left_grow().left_grow().left_grow();
-        let source = "alexander";
-        assert_eq!(span.view(source), Some("ale"))
+        let source: Vec<_> = "alexander".chars().collect();
+        assert_eq!(span.view(&source[..]), Some("ale".to_string()))
     }
 
     #[test]
     fn it_should_shift_the_span_when_source_is_viewed() {
         let span = Span::new();
         span.left_grow().left_grow().left_grow();
-        let source = "alexander";
-        assert_eq!(span.view(source), Some("ale"));
+        let source: Vec<_> = "alexander".chars().collect();
+        assert_eq!(span.view(&source[..]), Some("ale".to_string()));
         assert_eq!(span.get(), (3, 3));
     }
 
     #[test]
     fn it_should_not_shift_the_span_if_view_is_empty() {
         let span = Span::new();
-        let source = "alexander";
-        assert_eq!(span.view(source), None);
+        let source: Vec<_> = "alexander".chars().collect();
+        assert_eq!(span.view(&source[..]), None);
         assert_eq!(span.get(), (0, 0));
-        assert_eq!(span.advance(source), Some('a'));
+        assert_eq!(span.advance(&source[..]), Some('a'));
         assert_eq!(span.get(), (0, 1));
-        assert_eq!(span.view(source), Some("a"));
+        assert_eq!(span.view(&source[..]), Some("a"));
         assert_eq!(span.get(), (1, 1));
     }
 
     #[test]
     fn is_should_peek_with_offset() {
         let span = Span::new();
-        let source = "alexander";
-        assert_eq!(span.peek_n(source, 1), Some('l'));
-        assert_eq!(span.peek_n(source, 20), None);
+        let source: Vec<_> = "alexander".chars().collect();
+        assert_eq!(span.peek_n(&source[..], 1), Some('l'));
+        assert_eq!(span.peek_n(&source[..], 20), None);
     }
 
     #[test]
     fn is_should_peek_then_end() {
         let span = Span::new();
-        let source = "alexander";
-        assert_eq!(span.peek(source), Some('a'));
+        let source: Vec<_> = "alexander".chars().collect();
+        assert_eq!(span.peek(&source[..]), Some('a'));
     }
 
     #[test]
     fn it_should_expand_the_span_when_advanced() {
         let span = Span::new();
-        let source = "alexander";
-        assert_eq!(span.advance(source), Some('a'));
+        let source: Vec<_> = "alexander".chars().collect();
+        assert_eq!(span.advance(&source[..]), Some('a'));
         assert_eq!(span.get(), (0, 1));
     }
 
     #[test]
     fn is_should_handle_bounds() {
         let span = Span::new();
-        let source = "alex";
+        let source: Vec<_> = "alex".chars().collect();
         span.left_grow().left_grow().left_grow().left_grow();
-        assert_eq!(span.view(source), Some("alex"));
+        assert_eq!(span.view(&source[..]), Some(String::from("alex")));
     }
 
     #[test]

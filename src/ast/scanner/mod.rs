@@ -38,7 +38,7 @@ trait NumberMatcher {
 }
 
 pub struct Scanner {
-    source: String,
+    source: Vec<char>,
     span: Span,
 }
 
@@ -79,7 +79,7 @@ impl NumberMatcher for Scanner {
 impl Scanner {
     fn new(source: String) -> Scanner {
         Scanner {
-            source,
+            source: source.chars().collect(),
             span: Span::new(),
         }
     }

@@ -1,13 +1,17 @@
 use super::ast::parser::AST;
 use crate::ast::node::atom_node::{AtomNode, Symbol, Var};
-use crate::ast::parser::NodeKind::Vector;
-use crate::ast::parser::{Node, Tag};
+use crate::ast::node::Node;
+use crate::parser::Tag;
 use std::collections::{HashMap, VecDeque};
 use std::ops::Deref;
 use std::sync::Mutex;
 
-trait Introspection {
+pub(crate) trait Introspection {
     fn is_truthy(&self) -> bool;
+}
+
+pub trait Execute {
+    fn execute<'a>(&'a self, interpreter: &'a Interpreter, own_tag: Tag);
 }
 
 impl Introspection for AtomNode {
@@ -19,103 +23,49 @@ impl Introspection for AtomNode {
     }
 }
 
-trait Operation {
-    fn add(&self, lhs: &Self) -> Self;
-    fn sub(&self, lhs: &Self) -> Self;
-    fn mul(&self, lhs: &Self) -> Self;
-    fn div(&self, lhs: &Self) -> Self;
-    fn eq(&self, lhs: &Self) -> Self;
-    fn lt(&self, lhs: &Self) -> Self;
-    fn gt(&self, lhs: &Self) -> Self;
-}
-
-impl Operation for AtomNode {
-    fn add(&self, lhs: &Self) -> Self {
-        use AtomNode::String as Str;
-        use AtomNode::{Integer, Rational};
-        match (self, lhs) {
-            (Integer(a), Integer(b)) => Integer(a + b),
-            (Rational(a), Rational(b)) => Rational(a + b),
-            (Str(a), Str(b)) => Str(format!("{}{}", a, b)),
-            _ => panic!("fuck"),
-        }
-    }
-
-    fn sub(&self, lhs: &Self) -> Self {
-        use AtomNode::String as Str;
-        use AtomNode::{Integer, Rational};
-        match (self, lhs) {
-            (Integer(a), Integer(b)) => Integer(a - b),
-            (Rational(a), Rational(b)) => Rational(a - b),
-            _ => panic!("fuck"),
-        }
-    }
-
-    fn mul(&self, lhs: &Self) -> Self {
-        use AtomNode::String as Str;
-        use AtomNode::{Integer, Rational};
-        match (self, lhs) {
-            (Integer(a), Integer(b)) => Integer(a * b),
-            (Rational(a), Rational(b)) => Rational(a * b),
-            _ => panic!("fuck"),
-        }
-    }
-
-    fn div(&self, lhs: &Self) -> Self {
-        use AtomNode::String as Str;
-        use AtomNode::{Integer, Rational};
-        match (self, lhs) {
-            (Integer(a), Integer(b)) => Integer(a / b),
-            (Rational(a), Rational(b)) => Rational(a / b),
-            _ => panic!("fuck"),
-        }
-    }
-
-    fn eq(&self, lhs: &Self) -> Self {
-        use AtomNode::String as Str;
-        use AtomNode::{Integer, Rational, Boolean};
-        match (self, lhs) {
-            (Integer(a), Integer(b)) => Boolean(a == b),
-            (Rational(a), Rational(b)) => Boolean(a == b),
-            _ => panic!("fuck"),
-        }
-    }
-
-    fn gt(&self, lhs: &Self) -> Self {
-        use AtomNode::String as Str;
-        use AtomNode::{Integer, Rational, Boolean};
-        match (self, lhs) {
-            (Integer(a), Integer(b)) => Boolean(a > b),
-            (Rational(a), Rational(b)) => Boolean(a > b),
-            _ => panic!("fuck"),
-        }
-    }
-
-    fn lt(&self, lhs: &Self) -> Self {
-        use AtomNode::String as Str;
-        use AtomNode::{Integer, Rational, Boolean};
-        match (self, lhs) {
-            (Integer(a), Integer(b)) => Boolean(a < b),
-            (Rational(a), Rational(b)) => Boolean(a < b),
-            _ => panic!("fuck"),
-        }
-    }
+pub trait Operation {
+    type Val;
+    type Err;
+    fn add(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
+    fn sub(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
+    fn mul(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
+    fn div(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
+    fn eq(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
+    fn lt(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
+    fn gt(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
 }
 
 #[derive(Debug)]
-struct Env {
+pub struct Interpreter {
     ast: AST,
     values: Mutex<HashMap<Symbol, AtomNode>>,
+    tag_data: Mutex<HashMap<Tag, AtomNode>>,
 }
 
-impl Env {
-    fn new(ast: AST) -> Env {
+impl Interpreter {
+    fn new(ast: AST) -> Interpreter {
         let mut queue = VecDeque::new();
         queue.push_back(ast.root.unwrap());
-        Env {
+        Interpreter {
             ast,
+            tag_data: Mutex::new(HashMap::new()),
             values: Mutex::new(HashMap::new()),
         }
+    }
+
+    pub fn add(&self, left: Tag, right: Tag) -> AtomNode {
+        println!("left {:?} right {:?}", left, right);
+        AtomNode::Boolean(false)
+    }
+
+    pub fn gt(&self, left: Tag, right: Tag) -> bool {
+        println!("left {:?} right {:?}", left, right);
+        true
+    }
+
+    pub fn lt(&self, left: Tag, right: Tag) -> bool {
+        println!("left {:?} right {:?}", left, right);
+        true
     }
 
     // fn resolve(&self, symbol: &Symbol) -> Option<&AtomNode> {
@@ -126,173 +76,65 @@ impl Env {
     // }
 
     #[inline]
-    fn put(&self, symbol: Symbol, atom: AtomNode) {
+    pub(crate) fn put(&self, symbol: Symbol, atom: AtomNode) {
         let mut values = self.values.lock().unwrap();
         values.insert(symbol, atom);
     }
 
+    pub fn is_tag_true(&self, tag: Tag) -> bool {
+        true
+    }
+
     #[inline]
-    fn eval(&self, tag: Tag) -> AtomNode {
+    pub(crate) fn interpret_tag(&self, tag: Tag) {
+        println!("tag {:?}", tag);
         let node = self.ast.get(&tag).unwrap();
-        // println!("eval {:?}", tag);
+        node.execute(&self, tag);
+    }
 
-        match node {
-            Node::Atom(atom) => atom.clone(),
-            Node::While { condition, body } => {
-                while self.eval(*condition).is_truthy() {
-                    for tag in body {
-                        self.eval(*tag);
-                    }
-                }
-                AtomNode::Nil
-            }
-            Node::Definition { ident, value } => {
-                let ident = self.eval(*ident).take_symbol().unwrap();
-                let value = self.eval(*value);
-                self.put(ident, value);
-                AtomNode::Nil
-            }
-            Node::Call {
-                function,
-                arguments,
-            } => {
-                let function = self.eval(*function);
-                let function = function.take_symbol().unwrap();
-                // TODO: Move this closer to the resolution stage. 
-                // This allows short circuiting of expressions
-                let arguments: Vec<_> = arguments
-                    .iter()
-                    .map(|tag| {
-                        let atom = self.eval(*tag);
-                        atom.as_symbol()
-                            .map(|symbol| {
-                                let values = self.values.lock().unwrap();
-                                values.get(symbol).unwrap().clone()
-                            })
-                            .unwrap_or(atom)
-                    })
-                    .collect();
-                match function.name() {
-                    "println" => {
-                        for (i, arg) in arguments.iter().enumerate() {
-                            print!("{:?}", arg);
-                            if i + 1 < arguments.len() {
-                                print!(", ");
-                            }
-                        }
-                        print!("\n");
-                        AtomNode::Nil
-                    }
-                    "-" => {
-                        let mut items = arguments.into_iter();
-                        let mut difference = items.next().unwrap();
-                        for current in items {
-                            difference = difference.sub(&current);
+    pub fn set_tag_data(&self, tag: Tag, data: AtomNode) {
+        let mut tag_repo = self.tag_data.lock().unwrap();
+        tag_repo.insert(tag, data);
+    }
 
-                        }
-                        difference
-                    }
-                    "+" => {
-                        let mut items = arguments.into_iter();
-                        let mut sum = items.next().unwrap();
-                        for current in items {
-                            sum = sum.add(&current);
-
-                        }
-                        sum
-                    }
-                    "=" => {
-                        let mut flag = true;
-                        let mut items = arguments.into_iter();
-                        let mut last = items.next().unwrap();
-                        for current in items {
-                            if last.eq(&current).is_truthy() {
-                                last = current;
-                            } else {
-                                flag = false;
-                                break;
-                            }
-
-                        }
-                        AtomNode::Boolean(flag)
-                    }
-                    ">" => {
-                        let mut flag = true;
-                        let mut items = arguments.into_iter();
-                        let mut last = items.next().unwrap();
-                        for current in items {
-                            if last.gt(&current).is_truthy() {
-                                last = current;
-                            } else {
-                                flag = false;
-                                break;
-                            }
-
-                        }
-                        AtomNode::Boolean(flag)
-                    }
-                    "<" => {
-                        let mut flag = true;
-                        let mut items = arguments.into_iter();
-                        let mut last = items.next().unwrap();
-                        for current in items {
-                            if last.lt(&current).is_truthy() {
-                                last = current;
-                            } else {
-                                flag = false;
-                                break;
-                            }
-
-                        }
-                        AtomNode::Boolean(flag)
-                    }
-                    atom => {
-                        panic!("Fuck {:?}", atom);
-                    }
-                }
+    pub fn resolve(&self, atom: AtomNode) -> AtomNode {
+        match atom {
+            AtomNode::Symbol(symbol) => {
+                let mut values = self.values.lock().expect("Failed to lock values");
+                values.get(&symbol).expect("Symbol does not exist.").clone()
             }
-            Node::Vector { expressions } => {
-                let nodes: Vec<_> = expressions.iter().map(|tag| self.eval(*tag)).collect();
-                AtomNode::Vector(nodes)
-            }
-            Node::Do { expressions } => {
-                let mut value = AtomNode::Nil;
-                for tag in expressions {
-                    value = self.eval(*tag);
-                }
-                value
-            }
-            Node::Let { bindings, body } => {
-                let bindings = self.eval(*bindings);
-                println!("bindings {:?}", bindings);
-                println!("body {:?}", body);
-                panic!("bindings");
-            }
-            Node::If { condition, then, otherwise } => {
-                if self.eval(*condition).is_truthy() {
-                    self.eval(*then)
-                } else {
-                    self.eval(*otherwise)
-                }
-            }
-            Node::Program { expressions } => {
-                let mut value = AtomNode::Nil;
-                for tag in expressions {
-                    value = self.eval(*tag);
-                }
-                value
-            }
+            atom => atom,
         }
+    }
+
+    pub fn define(&self, symbol: Symbol, value: AtomNode) {
+        let mut values = self.values.lock().expect("Failed to lock values");
+        values.insert(symbol, value);
+    }
+
+    pub fn intern_tag(&self, tag: Tag) -> AtomNode {
+        self.interpret_tag(tag);
+        let data = self.get_tag_data(tag);
+        println!("{:?} {:?}", tag, data);
+        data
+    }
+
+    pub fn get_tag_data(&self, tag: Tag) -> AtomNode {
+        let mut tag_repo = self.tag_data.lock().unwrap();
+        tag_repo.get(&tag).unwrap().clone()
     }
 
     fn run(&self) {
         if let Some(tag) = self.ast.root {
-            println!("result = {:?}", self.eval(tag));
+            println!("result = {:?}", self.interpret_tag(tag));
         }
+        let tag_data = self.tag_data.lock().unwrap();
+        let values = self.values.lock().unwrap();
+        println!("{:#?}\n{:#?}", tag_data, values);
     }
 }
 
 pub fn interpret(ast: AST) {
-    let env = Env::new(ast);
+    let env = Interpreter::new(ast);
     env.run();
 }

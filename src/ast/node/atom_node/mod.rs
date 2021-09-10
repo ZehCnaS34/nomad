@@ -1,6 +1,17 @@
+mod symbol;
+mod var;
+
+use crate::ast::node::atom_node::AtomNode::Boolean;
+use crate::ast::node::Tag;
+use crate::interpreter::Operation;
+use crate::interpreter::{Execute, Interpreter};
+use std::cmp::{Eq, Ord, Ordering};
 use std::fmt;
 use std::ops::Deref;
+use std::ops::{Add, Div, Mul, Sub};
 use std::str::FromStr;
+pub use symbol::Symbol;
+pub use var::Var;
 
 #[derive(Clone)]
 pub enum AtomNode {
@@ -66,11 +77,6 @@ impl AtomNode {
     }
 }
 
-#[derive(Clone, Debug, PartialEq, Hash, Eq)]
-pub struct Var {
-    literal: String,
-}
-
 pub enum ParseError {
     Eof,
 }
@@ -96,95 +102,114 @@ impl FromStr for AtomNode {
     }
 }
 
-#[derive(Clone, PartialEq, Hash, Eq)]
-pub struct Symbol {
-    literal: String,
+pub enum OperationError {
+    CannotAdd,
+    CannotDiv,
+    CannotMul,
+    CannotSub,
+    CannotCompare,
 }
 
-impl fmt::Debug for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.literal)
+impl Mul for &AtomNode {
+    type Output = Result<AtomNode, OperationError>;
+    fn mul(self, rhs: Self) -> Self::Output {
+        use AtomNode::{Integer, Rational};
+        match (self, rhs) {
+            (Rational(l), Rational(r)) => Ok(Rational(l * r)),
+            (_, _) => Err(OperationError::CannotMul),
+        }
     }
 }
-
-impl fmt::Display for Symbol {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", self.literal)
+impl Div for &AtomNode {
+    type Output = Result<AtomNode, OperationError>;
+    fn div(self, rhs: Self) -> Self::Output {
+        use AtomNode::{Integer, Rational};
+        match (self, rhs) {
+            (Rational(l), Rational(r)) => Ok(Rational(l / r)),
+            (_, _) => Err(OperationError::CannotDiv),
+        }
     }
 }
-
-impl From<&str> for Symbol {
-    fn from(value: &str) -> Symbol {
-        Symbol {
-            literal: String::from(value),
+impl Sub for &AtomNode {
+    type Output = Result<AtomNode, OperationError>;
+    fn sub(self, rhs: Self) -> Self::Output {
+        use AtomNode::{Integer, Rational};
+        match (self, rhs) {
+            (Rational(l), Rational(r)) => Ok(Rational(l - r)),
+            (_, _) => Err(OperationError::CannotSub),
+        }
+    }
+}
+impl Add for &AtomNode {
+    type Output = Result<AtomNode, OperationError>;
+    fn add(self, rhs: Self) -> Self::Output {
+        use AtomNode::{Integer, Rational};
+        match (self, rhs) {
+            (Rational(l), Rational(r)) => Ok(Rational(l + r)),
+            (_, _) => Err(OperationError::CannotAdd),
         }
     }
 }
 
-impl Symbol {
-    pub fn name(&self) -> &str {
-        if self.literal.len() <= 1 {
-            &self.literal[..]
-        } else if let Some(index) = &self.literal[..].find('/') {
-            &self.literal[index + 1..]
-        } else {
-            &self.literal[..]
+impl PartialEq<Self> for &AtomNode {
+    fn eq(&self, other: &Self) -> bool {
+        use AtomNode::{Integer, Rational};
+        match (self, other) {
+            (Rational(l), Rational(r)) => l == r,
+            (Integer(l), Rational(r)) => (*l as f64) == *r,
+            (Rational(l), Integer(r)) => *l == (*r).into(),
+            (_, _) => false,
         }
-    }
-
-    pub fn namespace(&self) -> Option<&str> {
-        if self.literal.len() <= 1 {
-            None
-        } else if let Some(index) = &self.literal[..].find('/') {
-            Some(&self.literal[0..index + 0])
-        } else {
-            None
-        }
-    }
-
-    pub fn get_namespace(&self) -> Option<Symbol> {
-        self.namespace().map(|namespace| namespace.into())
-    }
-
-    pub fn is_qualified(&self) -> bool {
-        self.literal.len() > 1 && self.literal[..].contains('/')
     }
 }
 
-#[cfg(test)]
-mod test {
-    use super::*;
+impl PartialOrd<Self> for &AtomNode {
+    fn partial_cmp(&self, other: &Self) -> Option<Ordering> {
+        use AtomNode::{Integer, Rational};
+        match (self, other) {
+            (Rational(l), Rational(r)) => l.partial_cmp(r),
+            (Integer(l), Rational(r)) => (*l as f64).partial_cmp(r),
+            (Rational(l), Integer(r)) => (*l).partial_cmp(&(*(r) as f64)),
+            (_, _) => None,
+        }
+    }
+}
 
-    #[test]
-    fn properly_inspect_symbol_name() {
-        let sym: Symbol = "awesome".into();
-        assert_eq!(sym.name(), "awesome");
-        let sym: Symbol = "nomad.core/add".into();
-        assert_eq!(sym.name(), "add");
+impl Operation for AtomNode {
+    type Val = AtomNode;
+    type Err = OperationError;
+
+    fn add(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
+        self + rhs
     }
 
-    #[test]
-    fn properly_inspect_symbol_namespace() {
-        let sym: Symbol = "nomad.core/add".into();
-        assert_eq!(sym.namespace(), Some("nomad.core"));
+    fn sub(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
+        self - rhs
     }
 
-    #[test]
-    fn inspect_divide_symbol() {
-        let sym: Symbol = "/".into();
-        assert_eq!(sym.name(), "/");
+    fn mul(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
+        self * rhs
     }
 
-    #[test]
-    fn meta_information() {
-        let sym: Symbol = "nomad.core/information".into();
-        assert_eq!(sym.is_qualified(), true);
+    fn div(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
+        self / rhs
     }
 
-    #[test]
-    fn create_namespace_symbol_from_symbol() {
-        let full_sym: Symbol = "nomad.core/information".into();
-        let ns_sym = full_sym.get_namespace().unwrap();
-        assert_eq!(ns_sym.name(), "nomad.core");
+    fn eq(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
+        Ok(AtomNode::Boolean(self == rhs))
+    }
+
+    fn lt(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
+        Ok(AtomNode::Boolean(self < rhs))
+    }
+
+    fn gt(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
+        Ok(AtomNode::Boolean(self > rhs))
+    }
+}
+
+impl Execute for AtomNode {
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
+        interpreter.set_tag_data(own_tag, self.clone());
     }
 }

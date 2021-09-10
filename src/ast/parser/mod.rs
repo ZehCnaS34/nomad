@@ -1,3 +1,5 @@
+use crate::ast::node::do_node::DoNode;
+use crate::ast::node::program_node::ProgramNode;
 use std::cell::Cell;
 use std::str::FromStr;
 
@@ -9,110 +11,81 @@ use super::node::def_node::DefinitionNode;
 use super::node::function_node::FunctionCallNode;
 use super::node::while_node::WhileNode;
 use super::scanner::token::{Kind, Token};
+use crate::result::parser::ErrorKind as Error;
+use crate::result::ParseResult as Result;
 use std::fmt;
 
 use crate::ast::node::atom_node::Symbol;
 use crate::ast::node::if_node::IfNode;
+use crate::ast::node::Node;
+use crate::ast::CHILD_LIMIT;
 use im::HashMap;
 use std::collections::VecDeque;
 use std::fmt::Formatter;
 use std::sync::Mutex;
 
-#[derive(Debug)]
-pub enum Error {
-    UnexpectedEof,
-    ExpectedClosingParen,
-    CouldNotParseAtom,
-    IfMissingCondition,
-    IfMissingTrueBranch,
-    InvalidDefForm,
-}
-
-impl From<def_node::Error> for Error {
-    fn from(def_node_error: def_node::Error) -> Error {
-        Error::InvalidDefForm
-    }
-}
-
-impl From<ParseError> for Error {
-    fn from(parse_error: ParseError) -> Error {
-        Error::CouldNotParseAtom
-    }
-}
-
-pub type Result<T> = std::result::Result<T, Error>;
-
 type Id = usize;
 type Ids = Vec<Id>;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-pub enum NodeKind {
-    Atom,
-    Definition,
+enum Form {
+    Call,
+    Index,
+    Macro,
+    Special,
     While,
     If,
-    Call,
-    Program,
-    Vector,
-    Let,
     Do,
+    Def,
+    Loop,
+    Recur,
 }
 
-#[derive(Clone, Copy, Hash, Eq, PartialEq)]
-pub struct Tag {
-    kind: NodeKind,
-    value: usize,
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+pub enum Tag {
+    Noop,
+    Atom(Id),
+    Definition(Id),
+    While(Id),
+    If(Id),
+    Call(Id),
+    Program(Id),
+    Vector(Id),
+    Let(Id),
+    Do(Id),
 }
 
-impl fmt::Debug for Tag {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self.kind {
-            NodeKind::Atom => write!(f, "[atom::{}]", self.value),
-            NodeKind::While => write!(f, "[while::{}]", self.value),
-            NodeKind::Definition => write!(f, "[def::{}]", self.value),
-            NodeKind::Call => write!(f, "[call::{}]", self.value),
-            NodeKind::Program => write!(f, "[program::{}]", self.value),
-            NodeKind::Vector => write!(f, "[vector::{}]", self.value),
-            NodeKind::Do => write!(f, "[do::{}]", self.value),
-            NodeKind::Let => write!(f, "[let::{}]", self.value),
-            NodeKind::If => write!(f, "[if::{}]", self.value),
-        }
+pub struct TagIter<'a> {
+    current: usize,
+    tags: &'a [Tag],
+}
+
+impl Tag {
+    pub fn tags(tags: &[Tag]) -> TagIter {
+        TagIter { tags, current: 0 }
     }
 }
 
-#[derive(Debug, Clone)]
-pub enum Node {
-    Atom(AtomNode),
-    While {
-        condition: Tag,
-        body: Vec<Tag>,
-    },
-    Definition {
-        ident: Tag,
-        value: Tag,
-    },
-    Call {
-        function: Tag,
-        arguments: Vec<Tag>,
-    },
-    Program {
-        expressions: Vec<Tag>,
-    },
-    Vector {
-        expressions: Vec<Tag>,
-    },
-    Let {
-        bindings: Tag,  
-        body: Vec<Tag>,
-    },
-    Do {
-        expressions: Vec<Tag>,
-    },
-    If {
-        condition: Tag,
-        then: Tag,
-        otherwise: Tag,
-    },
+impl<'a> Iterator for TagIter<'a> {
+    type Item = Tag;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.current >= self.tags.len() {
+            return None;
+        }
+        let tag = self.tags[self.current];
+        if tag == Tag::Noop {
+            return None;
+        }
+        self.current += 1;
+        Some(tag)
+    }
+}
+
+impl From<atom_node::ParseError> for Error {
+    fn from(parse_error: atom_node::ParseError) -> Error {
+        Error::CouldNotParseAtom
+    }
 }
 
 #[derive(Debug)]
@@ -121,94 +94,12 @@ pub struct AST {
     pub root: Option<Tag>,
 }
 
-pub struct AstIter<'a> {
-    ast: &'a AST,
-    queue: VecDeque<Tag>,
-}
-
-impl<'a> Iterator for AstIter<'a> {
-    type Item = (Tag, &'a AtomNode);
-
-    fn next(&mut self) -> Option<Self::Item> {
-        self.queue.pop_front().and_then(|tag| {
-            self.ast.get(&tag).and_then(|node| match &node {
-                Node::Atom(atom) => Some((tag, atom)),
-                Node::Let { bindings, body } => {
-                    self.queue.push_back(*bindings);
-                    for e in body {
-                        self.queue.push_back(*e);
-                    }
-                    self.next()
-                }
-                Node::While { condition, body } => {
-                    self.queue.push_back(*condition);
-                    for e in body {
-                        self.queue.push_back(*e);
-                    }
-                    self.next()
-                }
-                Node::Definition { ident, value } => {
-                    self.queue.push_back(*ident);
-                    self.queue.push_back(*value);
-                    self.next()
-                }
-                Node::Call {
-                    function,
-                    arguments,
-                } => {
-                    self.queue.push_back(*function);
-                    for e in arguments {
-                        self.queue.push_back(*e);
-                    }
-                    self.next()
-                }
-                Node::Program { expressions } => {
-                    for e in expressions {
-                        self.queue.push_back(*e);
-                    }
-                    self.next()
-                }
-                Node::Vector { expressions } => {
-                    for e in expressions {
-                        self.queue.push_back(*e);
-                    }
-                    self.next()
-                }
-                Node::Do { expressions } => {
-                    for e in expressions {
-                        self.queue.push_back(*e);
-                    }
-                    self.next()
-                }
-                Node::If {
-                    condition,
-                    then,
-                    otherwise,
-                } => {
-                    self.queue.push_back(*condition);
-                    self.queue.push_back(*then);
-                    self.queue.push_back(*otherwise);
-                    self.next()
-                }
-            })
-        })
-    }
-}
-
 impl AST {
     fn new() -> AST {
         AST {
             nodes: HashMap::new(),
             root: None,
         }
-    }
-
-    pub fn iter(&self) -> AstIter {
-        let mut queue = VecDeque::new();
-        if let Some(tag) = self.root {
-            queue.push_back(tag);
-        }
-        AstIter { ast: &self, queue }
     }
 
     pub fn get(&self, tag: &Tag) -> Option<&Node> {
@@ -241,46 +132,19 @@ impl Parser {
     #[inline]
     fn submit(&self, node: Node) -> Tag {
         let mut ast = self.ast.lock().unwrap();
-        let id = match &node {
-            Node::Let { .. } => Tag {
-                kind: NodeKind::Let,
-                value: ast.len(),
-            },
-            Node::Do { .. } => Tag {
-                kind: NodeKind::Do,
-                value: ast.len(),
-            },
-            Node::Vector { .. } => Tag {
-                kind: NodeKind::Vector,
-                value: ast.len(),
-            },
-            Node::Program { .. } => Tag {
-                kind: NodeKind::Program,
-                value: ast.len(),
-            },
-            Node::Call { .. } => Tag {
-                kind: NodeKind::Call,
-                value: ast.len(),
-            },
-            Node::While { .. } => Tag {
-                kind: NodeKind::While,
-                value: ast.len(),
-            },
-            Node::If { .. } => Tag {
-                kind: NodeKind::If,
-                value: ast.len(),
-            },
-            Node::Atom { .. } => Tag {
-                kind: NodeKind::Atom,
-                value: ast.len(),
-            },
-            Node::Definition { .. } => Tag {
-                kind: NodeKind::Definition,
-                value: ast.len(),
-            },
+        let value = ast.len();
+        let tag = match &node {
+            Node::Do(..) => Tag::Do(value),
+            Node::Program(..) => Tag::Program(value),
+            Node::FunctionCall(..) => Tag::Call(value),
+            Node::While(..) => Tag::While(value),
+            Node::If(..) => Tag::If(value),
+            Node::Atom(..) => Tag::Atom(value),
+            Node::Definition(..) => Tag::Definition(value),
+            node => panic!("node not yet implemented {:?}", node),
         };
-        ast.insert(id, node);
-        return id;
+        ast.insert(tag, node);
+        return tag;
     }
 
     #[inline]
@@ -300,88 +164,52 @@ impl Parser {
         Ok(result)
     }
 
-    fn special_form(&self, tag: Tag) -> NodeKind {
+    fn special_form(&self, tag: Tag) -> Form {
         let ast = self.ast.lock().unwrap();
-        match ast.nodes.get(&tag) {
-            None => NodeKind::Call,
-            Some(node) => match node {
-                Node::Atom(atom) => match atom {
-                    AtomNode::Symbol(symbol) if !symbol.is_qualified() => match symbol.name() {
-                        "def" => NodeKind::Definition,
-                        "if" => NodeKind::If,
-                        "while" => NodeKind::While,
-                        "do" => NodeKind::Do,
-                        "let" => NodeKind::Let,
-                        _ => NodeKind::Call,
-                    },
-                    _ => NodeKind::Call,
+        match ast.nodes.get(&tag).unwrap() {
+            Node::Atom(atom) => match atom {
+                AtomNode::Symbol(symbol) => match symbol.name() {
+                    "def" if !symbol.is_qualified() => Form::Def,
+                    "loop" if !symbol.is_qualified() => Form::Loop,
+                    "recur" if !symbol.is_qualified() => Form::Recur,
+                    "while" if !symbol.is_qualified() => Form::While,
+                    "if" if !symbol.is_qualified() => Form::If,
+                    "do" if !symbol.is_qualified() => Form::Do,
+                    _ => Form::Call,
                 },
-                _ => NodeKind::Call,
+                _ => Form::Call,
             },
+            _ => Form::Call,
         }
     }
 
-    fn take_until(&self, kind: Kind) -> Result<Vec<Tag>> {
-        let mut nodes = vec![];
+    fn take_until(&self, kind: Kind) -> Result<[Tag; 50]> {
+        let mut nodes = [Tag::Noop; 50];
+        let mut i = 0;
         loop {
             let token = self.peek().ok_or(Error::UnexpectedEof)?;
             if token.kind == kind || token.kind == Kind::Eof {
                 self.take();
                 break;
             }
-            nodes.push(self.expression()?);
+            nodes[i] = self.expression()?;
+            i += 1;
         }
         Ok(nodes)
     }
 
     fn nested(&self) -> Result<Tag> {
-        let mut nodes = self.take_until(Kind::RightParen)?.into_iter();
-        let function = nodes.next().unwrap();
-        match self.special_form(function) {
-            NodeKind::Definition => {
-                let ident = nodes.next().unwrap();
-                let value = nodes.next().unwrap();
-                assert_eq!(0, nodes.len());
-                Ok(self.submit(Node::Definition { ident, value }))
-            }
-            NodeKind::While => Ok(self.submit(Node::While {
-                condition: nodes.next().unwrap(),
-                body: nodes.collect(),
-            })),
-            NodeKind::If => {
-                let condition = nodes.next().unwrap();
-                let then = nodes.next().unwrap();
-                let otherwise = nodes.next().unwrap();
-                Ok(self.submit(Node::If {
-                    condition,
-                    then,
-                    otherwise,
-                }))
-            }
-            NodeKind::Do => Ok(self.submit(Node::Do {
-                expressions: nodes.collect(),
-            })),
-            NodeKind::Call => Ok(self.submit(Node::Call {
-                function,
-                arguments: nodes.collect(),
-            })),
-            NodeKind::Let => {
-                let bindings = nodes.next().unwrap();
-                let body: Vec<_> = nodes.collect();
-                Ok(self.submit(Node::Let {
-                    bindings: bindings,
-                    body,
-                }))
-            }
-            kind => {
-                panic!("Fuck {:?}", kind);
-            }
-        }
-    }
-
-    fn vector(&self) -> Result<Tag> {
-        let mut expressions = self.take_until(Kind::RightBracket)?;
-        Ok(self.submit(Node::Vector { expressions }))
+        let mut tags = self.take_until(Kind::RightParen)?;
+        let first = tags[0];
+        // println!("tags {:?}", tags);
+        Ok(match self.special_form(first) {
+            Form::Call => self.submit(Node::FunctionCall(FunctionCallNode::from_tags(&tags[..]))),
+            Form::While => self.submit(Node::While(WhileNode::from_tags(&tags[1..]))),
+            Form::If => self.submit(Node::If(IfNode::from_tags(&tags[1..]))),
+            Form::Def => self.submit(Node::Definition(DefinitionNode::from_tags(&tags[1..]))),
+            Form::Do => self.submit(Node::Do(DoNode::from_tags(&tags[1..]))),
+            form => panic!("form {:?} not yet implemented", form),
+        })
     }
 
     fn expression(&self) -> Result<Tag> {
@@ -393,7 +221,6 @@ impl Parser {
                 Ok(id)
             }
             Kind::LeftParen => self.nested(),
-            Kind::LeftBracket => self.vector(),
             kind => {
                 todo!("{:?}", kind);
             }
@@ -401,7 +228,8 @@ impl Parser {
     }
 
     fn program(&self) -> Result<Tag> {
-        let mut expressions = vec![];
+        let mut expressions = [Tag::Noop; CHILD_LIMIT.program];
+        let mut i = 0;
         while let Some(token) = self.peek() {
             match token.kind {
                 Kind::Comment => {
@@ -411,11 +239,12 @@ impl Parser {
                     break;
                 }
                 _kind => {
-                    expressions.push(self.expression()?);
+                    expressions[i] = self.expression()?;
+                    i += 1;
                 }
             }
         }
-        Ok(self.submit(Node::Program { expressions }))
+        Ok(self.submit(Node::Program(ProgramNode::from(&expressions[..]))))
     }
 }
 
