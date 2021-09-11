@@ -199,14 +199,13 @@ impl Operation for AtomNode {
     type Err = OperationError;
 
     fn imod(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
-        use AtomNode::{Rational, Integer};
+        use AtomNode::{Integer, Rational};
         match (self, rhs) {
             (Rational(left), Rational(right)) => Ok(Rational(left % right)),
             (Integer(left), Integer(right)) => Ok(Integer(left % right)),
-            value => panic!("imod not implemented for {:?}", value)
+            value => panic!("imod not implemented for {:?}", value),
         }
     }
-
 
     fn add(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
         self + rhs

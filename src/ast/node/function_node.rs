@@ -41,8 +41,6 @@ impl FunctionCallNode {
     }
 }
 
-
-
 macro_rules! order_check {
     ($interpreter:ident, $arguments:expr, $operation:expr ) => {
         match crate::ast::parser::Tag::len(&$arguments) {
@@ -77,7 +75,8 @@ macro_rules! accumulate {
             0 => $default,
             1 => crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]),
             n => {
-                let mut sum = crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]);
+                let mut sum =
+                    crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]);
                 for tag in crate::ast::parser::Tag::tags(&$arguments[1..]) {
                     let current =
                         crate::interpreter::Interpreter::interpret_tag(&$interpreter, tag);
@@ -93,20 +92,25 @@ impl Execute for FunctionCallNode {
     fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
         let function = interpreter.interpret_tag(self.function);
         use AtomNode::Rational;
-        // println!("function {:?}", function);
         match function {
             AtomNode::Symbol(symbol) => {
                 if !symbol.is_qualified() {
-                    // println!("running {:?}", symbol.name());
                     match symbol.name() {
-                        // this is wrong.
                         "<" => order_check! { interpreter, self.arguments, Operation::lt },
                         ">" => order_check! { interpreter, self.arguments, Operation::gt },
                         "=" => order_check! { interpreter, self.arguments, Operation::eq },
-                        "+" => accumulate! { interpreter, self.arguments, Operation::add, 0.0.to_rational() },
-                        "-" => accumulate! { interpreter, self.arguments, Operation::sub, 0.0.to_rational() },
-                        "*" => accumulate! { interpreter, self.arguments, Operation::mul, 1.0.to_rational() },
-                        "/" => accumulate! { interpreter, self.arguments, Operation::div, 1.0.to_rational() },
+                        "+" => {
+                            accumulate! { interpreter, self.arguments, Operation::add, 0.0.to_rational() }
+                        }
+                        "-" => {
+                            accumulate! { interpreter, self.arguments, Operation::sub, 0.0.to_rational() }
+                        }
+                        "*" => {
+                            accumulate! { interpreter, self.arguments, Operation::mul, 1.0.to_rational() }
+                        }
+                        "/" => {
+                            accumulate! { interpreter, self.arguments, Operation::div, 1.0.to_rational() }
+                        }
                         "mod" => {
                             let mut arguments: Vec<_> = Tag::tags(&self.arguments).collect();
                             let mut arguments = arguments.into_iter();
@@ -121,7 +125,7 @@ impl Execute for FunctionCallNode {
                             for (i, tag) in Tag::tags(&self.arguments).enumerate() {
                                 print!("{}", interpreter.interpret_tag(tag));
                                 if i != l {
-                                    print!(", ");
+                                    print!(" ");
                                 }
                             }
                             print!("\n");
