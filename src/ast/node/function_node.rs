@@ -1,11 +1,30 @@
-use crate::ast::node::atom_node::AtomNode;
 use crate::ast::node::atom_node::Symbol;
+use crate::ast::node::atom_node::{AtomNode, ToRational};
 use crate::ast::node::Node;
 use crate::ast::parser::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::copy;
+use crate::interpreter::Introspection;
+use crate::interpreter::Operation;
 use crate::interpreter::{Execute, Interpreter};
+use std::any::Any;
 use std::fmt;
+
+trait Show {
+    fn show(self) -> Self
+    where
+        Self: Sized + fmt::Debug;
+}
+
+impl Show for AtomNode {
+    fn show(self) -> Self
+    where
+        Self: fmt::Debug + Sized,
+    {
+        println!("self {:?}", self);
+        self
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct FunctionCallNode {
@@ -22,69 +41,96 @@ impl FunctionCallNode {
     }
 }
 
-macro_rules! short_circuit {
-    ( $arguments:expr, $fn:expr, $inst:ident ) => {{
-        use crate::interpreter::Interpreter;
-        let mut flag = true;
-        let mut last_tag: Option<Tag> = None;
-        for current_tag in Tag::tags(&$arguments) {
-            if let Some(last) = last_tag {
-                if $fn(&$inst, last, current_tag) {
-                    last_tag = Some(current_tag);
-                } else {
-                    flag = false;
-                    break;
+
+
+macro_rules! order_check {
+    ($interpreter:ident, $arguments:expr, $operation:expr ) => {
+        match crate::ast::parser::Tag::len(&$arguments) {
+            0 => crate::ast::node::atom_node::AtomNode::Boolean(true),
+            1 => {
+                crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]);
+                crate::ast::node::atom_node::AtomNode::Boolean(true)
+            }
+            n => {
+                let mut flag = true;
+                let mut last_value =
+                    crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]);
+                for tag in crate::ast::parser::Tag::tags(&$arguments[1..]) {
+                    let current =
+                        crate::interpreter::Interpreter::interpret_tag(&$interpreter, tag);
+                    if $operation(&last_value, &current).unwrap().is_truthy() {
+                        last_value = current;
+                    } else {
+                        flag = false;
+                        break;
+                    }
                 }
-            } else {
-                last_tag = Some(current_tag);
+                crate::ast::node::atom_node::AtomNode::Boolean(flag)
             }
         }
-        flag
-    }};
+    };
 }
 
-macro_rules! reduction {
-    ( $arguments:expr, $fn:expr, $default:expr, $inst:ident ) => {{
-        use crate::interpreter::Interpreter;
-        let mut last_tag: Option<Tag> = None;
-        let mut reduction = Some($default);
-        for current_tag in Tag::tags(&$arguments) {
-            if let Some(r) = last_tag {
-                reduction = Some($fn(&$inst, r, current_tag));
-            } else {
-                last_tag = Some(current_tag);
+macro_rules! accumulate {
+    ($interpreter:ident, $arguments:expr, $operation:expr, $default:expr ) => {
+        match crate::ast::parser::Tag::len(&$arguments) {
+            0 => $default,
+            1 => crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]),
+            n => {
+                let mut sum = crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]);
+                for tag in crate::ast::parser::Tag::tags(&$arguments[1..]) {
+                    let current =
+                        crate::interpreter::Interpreter::interpret_tag(&$interpreter, tag);
+                    sum = $operation(&sum, &current).unwrap();
+                }
+                sum
             }
         }
-        reduction
-    }};
+    };
 }
 
 impl Execute for FunctionCallNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
-        let function = interpreter.intern_tag(self.function);
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
+        let function = interpreter.interpret_tag(self.function);
+        use AtomNode::Rational;
+        // println!("function {:?}", function);
         match function {
             AtomNode::Symbol(symbol) => {
                 if !symbol.is_qualified() {
-                    println!("running {:?}", symbol.name());
+                    // println!("running {:?}", symbol.name());
                     match symbol.name() {
-                        "<" => {
-                            let flag =
-                                short_circuit! { self.arguments, Interpreter::lt, interpreter };
-                            interpreter.set_tag_data(own_tag, AtomNode::Boolean(flag));
+                        // this is wrong.
+                        "<" => order_check! { interpreter, self.arguments, Operation::lt },
+                        ">" => order_check! { interpreter, self.arguments, Operation::gt },
+                        "=" => order_check! { interpreter, self.arguments, Operation::eq },
+                        "+" => accumulate! { interpreter, self.arguments, Operation::add, 0.0.to_rational() },
+                        "-" => accumulate! { interpreter, self.arguments, Operation::sub, 0.0.to_rational() },
+                        "*" => accumulate! { interpreter, self.arguments, Operation::mul, 1.0.to_rational() },
+                        "/" => accumulate! { interpreter, self.arguments, Operation::div, 1.0.to_rational() },
+                        "mod" => {
+                            let mut arguments: Vec<_> = Tag::tags(&self.arguments).collect();
+                            let mut arguments = arguments.into_iter();
+                            let left = arguments.next().unwrap();
+                            let right = arguments.next().unwrap();
+                            let left = interpreter.interpret_tag(left);
+                            let right = interpreter.interpret_tag(right);
+                            left.imod(&right).unwrap()
                         }
-                        ">" => {
-                            let flag =
-                                short_circuit! { self.arguments, Interpreter::gt, interpreter };
-                            interpreter.set_tag_data(own_tag, AtomNode::Boolean(flag));
+                        "println" => {
+                            let l = self.arguments.len() - 1;
+                            for (i, tag) in Tag::tags(&self.arguments).enumerate() {
+                                print!("{}", interpreter.interpret_tag(tag));
+                                if i != l {
+                                    print!(", ");
+                                }
+                            }
+                            print!("\n");
+                            AtomNode::Nil
                         }
-                        "+" => {
-                            let total = reduction! { self.arguments, Interpreter::add, AtomNode::Nil, interpreter };
-                        }
-                        "-" => {}
-                        "=" => {}
-                        "println" => {}
                         function => panic!("fuck {:?}", function),
                     }
+                } else {
+                    panic!("fuck");
                 }
             }
             _ => panic!("fuck"),
@@ -106,7 +152,7 @@ pub enum FunctionNode {
 }
 
 impl Execute for FunctionNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
         todo!();
     }
 }

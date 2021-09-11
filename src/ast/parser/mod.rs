@@ -64,6 +64,14 @@ impl Tag {
     pub fn tags(tags: &[Tag]) -> TagIter {
         TagIter { tags, current: 0 }
     }
+
+    pub fn len(tags: &[Tag]) -> usize {
+        let mut i = 0;
+        for _ in Tag::tags(tags) {
+            i += 1;
+        }
+        return i;
+    }
 }
 
 impl<'a> Iterator for TagIter<'a> {

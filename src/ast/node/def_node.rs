@@ -21,15 +21,17 @@ impl DefinitionNode {
 }
 
 impl Execute for DefinitionNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
-        let ident = interpreter.intern_tag(self.ident);
-        ident.take_symbol().map(|symbol| {
-            if !symbol.is_qualified() {
-                let value = interpreter.intern_tag(self.value);
-                let value = interpreter.resolve(value);
-                println!("setting symbol {:?} to {:?}", symbol, value);
-                interpreter.define(symbol, value);
-            }
-        });
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
+        interpreter
+            .get_atom_node(self.ident)
+            .and_then(|atom| atom.as_symbol())
+            .map(|symbol| {
+                if symbol.is_qualified() {
+                    panic!("ident cannot be qualifed")
+                } else {
+                    interpreter.define(symbol.clone(), interpreter.interpret_tag(self.value))
+                }
+            })
+            .expect("Ident must be a symbol")
     }
 }

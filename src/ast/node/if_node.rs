@@ -33,12 +33,12 @@ impl IfNode {
 }
 
 impl Execute for IfNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
         interpreter.interpret_tag(self.condition);
         if interpreter.is_tag_true(self.condition) {
-            interpreter.interpret_tag(self.true_branch);
+            interpreter.interpret_tag(self.true_branch)
         } else {
-            interpreter.interpret_tag(self.false_branch);
+            interpreter.interpret_tag(self.false_branch)
         }
     }
 }

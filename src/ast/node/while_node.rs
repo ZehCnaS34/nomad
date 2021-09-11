@@ -1,8 +1,9 @@
+use crate::ast::node::atom_node::AtomNode;
 use crate::ast::node::Node;
 use crate::ast::parser::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::copy;
-use crate::interpreter::{Execute, Interpreter};
+use crate::interpreter::{Execute, Interpreter, Introspection};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy)]
@@ -20,17 +21,16 @@ impl WhileNode {
 }
 
 impl Execute for WhileNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
-        let mut i = 0;
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
         loop {
-            i += 1;
-            interpreter.interpret_tag(self.condition);
-            if !interpreter.is_tag_true(self.condition) || i > 30 {
+            if !interpreter.interpret_tag(self.condition).is_truthy() {
                 break;
             }
             for tag in Tag::tags(&self.body) {
                 interpreter.interpret_tag(tag);
             }
         }
+
+        AtomNode::Nil
     }
 }

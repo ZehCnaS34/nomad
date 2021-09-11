@@ -25,15 +25,25 @@ pub enum AtomNode {
     Var(Var),
 }
 
+pub trait ToRational {
+    fn to_rational(self) -> AtomNode;
+}
+
+impl ToRational for f64 {
+    fn to_rational(self) -> AtomNode {
+        AtomNode::Rational(self)
+    }
+}
+
 impl fmt::Debug for AtomNode {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             AtomNode::Nil => write!(f, "nil"),
-            AtomNode::Rational(n) => write!(f, "{}", n),
-            AtomNode::Integer(i) => write!(f, "{}", i),
-            AtomNode::Boolean(b) => write!(f, "{}", b),
-            AtomNode::Symbol(s) => write!(f, "{}", s),
-            AtomNode::String(s) => write!(f, "{:?}", s),
+            AtomNode::Rational(n) => write!(f, "{}r", n),
+            AtomNode::Integer(i) => write!(f, "{}i", i),
+            AtomNode::Boolean(b) => write!(f, "{}b", b),
+            AtomNode::Symbol(s) => write!(f, "{}S", s),
+            AtomNode::String(s) => write!(f, "{}", s),
             AtomNode::Var(s) => write!(f, "{:?}", s),
             AtomNode::Vector(s) => write!(f, "{:?}", s),
         }
@@ -48,7 +58,7 @@ impl fmt::Display for AtomNode {
             AtomNode::Integer(i) => write!(f, "{}", i),
             AtomNode::Boolean(b) => write!(f, "{}", b),
             AtomNode::Symbol(s) => write!(f, "{}", s),
-            AtomNode::String(s) => write!(f, "{:?}", s),
+            AtomNode::String(s) => write!(f, "{}", s),
             AtomNode::Var(s) => write!(f, "{:?}", s),
             AtomNode::Vector(s) => write!(f, "{:?}", s),
         }
@@ -56,12 +66,20 @@ impl fmt::Display for AtomNode {
 }
 
 impl AtomNode {
+    pub fn as_bool(&self) -> Option<&bool> {
+        match self {
+            AtomNode::Boolean(b) => Some(b),
+            _ => None,
+        }
+    }
+
     pub fn as_symbol(&self) -> Option<&Symbol> {
         match self {
             AtomNode::Symbol(symbol) => Some(symbol),
             _ => None,
         }
     }
+
     pub fn take_symbol(self) -> Option<Symbol> {
         match self {
             AtomNode::Symbol(symbol) => Some(symbol),
@@ -102,6 +120,7 @@ impl FromStr for AtomNode {
     }
 }
 
+#[derive(Debug)]
 pub enum OperationError {
     CannotAdd,
     CannotDiv,
@@ -179,6 +198,16 @@ impl Operation for AtomNode {
     type Val = AtomNode;
     type Err = OperationError;
 
+    fn imod(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
+        use AtomNode::{Rational, Integer};
+        match (self, rhs) {
+            (Rational(left), Rational(right)) => Ok(Rational(left % right)),
+            (Integer(left), Integer(right)) => Ok(Integer(left % right)),
+            value => panic!("imod not implemented for {:?}", value)
+        }
+    }
+
+
     fn add(&self, rhs: &Self) -> Result<Self::Val, Self::Err> {
         self + rhs
     }
@@ -209,7 +238,7 @@ impl Operation for AtomNode {
 }
 
 impl Execute for AtomNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
-        interpreter.set_tag_data(own_tag, self.clone());
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
+        self.clone()
     }
 }

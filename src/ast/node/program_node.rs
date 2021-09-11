@@ -1,3 +1,4 @@
+use crate::ast::node::atom_node::AtomNode;
 use crate::ast::parser::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::copy;
@@ -17,9 +18,10 @@ impl ProgramNode {
 }
 
 impl Execute for ProgramNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
         for tag in Tag::tags(&self.expressions) {
             interpreter.interpret_tag(tag);
         }
+        AtomNode::Nil
     }
 }

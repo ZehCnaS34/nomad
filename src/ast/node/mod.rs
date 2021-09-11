@@ -1,3 +1,4 @@
+use crate::ast::node::atom_node::AtomNode;
 use crate::ast::parser::Tag;
 use crate::interpreter::{Execute, Interpreter};
 
@@ -26,8 +27,17 @@ pub enum Node {
     Program(program_node::ProgramNode),
 }
 
+impl Node {
+    pub fn as_atom(&self) -> Option<&atom_node::AtomNode> {
+        match self {
+            Node::Atom(node) => Some(node),
+            _ => None,
+        }
+    }
+}
+
 impl Execute for Node {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
         match self {
             Node::Atom(node) => node.execute(interpreter, own_tag),
             Node::Function(node) => node.execute(interpreter, own_tag),

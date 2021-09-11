@@ -1,4 +1,5 @@
 use super::Node;
+use crate::ast::node::atom_node::AtomNode;
 use crate::ast::parser::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::copy;
@@ -18,7 +19,7 @@ impl ListNode {
 }
 
 impl Execute for ListNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) {
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
         todo!();
     }
 }

@@ -11,14 +11,15 @@ pub(crate) trait Introspection {
 }
 
 pub trait Execute {
-    fn execute<'a>(&'a self, interpreter: &'a Interpreter, own_tag: Tag);
+    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode;
 }
 
 impl Introspection for AtomNode {
     fn is_truthy(&self) -> bool {
         match self {
             AtomNode::Boolean(b) => *b,
-            _ => false,
+            AtomNode::Nil => false,
+            _ => true,
         }
     }
 }
@@ -33,6 +34,7 @@ pub trait Operation {
     fn eq(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
     fn lt(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
     fn gt(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
+    fn imod(&self, rhs: &Self) -> Result<Self::Val, Self::Err>;
 }
 
 #[derive(Debug)]
@@ -85,11 +87,16 @@ impl Interpreter {
         true
     }
 
+    pub fn get_atom_node(&self, tag: Tag) -> Option<&AtomNode> {
+        self.ast.get(&tag).and_then(|node| node.as_atom())
+    }
+
     #[inline]
-    pub(crate) fn interpret_tag(&self, tag: Tag) {
-        println!("tag {:?}", tag);
+    pub(crate) fn interpret_tag(&self, tag: Tag) -> AtomNode {
+        // println!("tag {:?}", tag);
         let node = self.ast.get(&tag).unwrap();
-        node.execute(&self, tag);
+        let atom = node.execute(&self, tag);
+        self.resolve(atom)
     }
 
     pub fn set_tag_data(&self, tag: Tag, data: AtomNode) {
@@ -101,15 +108,30 @@ impl Interpreter {
         match atom {
             AtomNode::Symbol(symbol) => {
                 let mut values = self.values.lock().expect("Failed to lock values");
-                values.get(&symbol).expect("Symbol does not exist.").clone()
+                match values.get(&symbol) {
+                    Some(atom) => atom.clone(),
+                    None => match symbol.name() {
+                        "<" => AtomNode::Symbol(Symbol::from("<")),
+                        ">" => AtomNode::Symbol(Symbol::from(">")),
+                        "+" => AtomNode::Symbol(Symbol::from("+")),
+                        "-" => AtomNode::Symbol(Symbol::from("-")),
+                        "*" => AtomNode::Symbol(Symbol::from("*")),
+                        "/" => AtomNode::Symbol(Symbol::from("/")),
+                        "=" => AtomNode::Symbol(Symbol::from("=")),
+                        "mod" => AtomNode::Symbol(Symbol::from("mod")),
+                        "println" => AtomNode::Symbol(Symbol::from("println")),
+                        name => panic!("no runtime constant {:?}", name),
+                    },
+                }
             }
             atom => atom,
         }
     }
 
-    pub fn define(&self, symbol: Symbol, value: AtomNode) {
+    pub fn define(&self, symbol: Symbol, value: AtomNode) -> AtomNode {
         let mut values = self.values.lock().expect("Failed to lock values");
-        values.insert(symbol, value);
+        values.insert(symbol.clone(), value);
+        AtomNode::Var(Var::make(("awesome", symbol.name())))
     }
 
     pub fn intern_tag(&self, tag: Tag) -> AtomNode {

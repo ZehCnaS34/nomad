@@ -1,3 +1,7 @@
 (def sum 0)
+(def max 100000)
 
-(< sum 1 2 3)
+(while (< sum max)
+  (def sum (+ sum 1)))
+
+(println "done")
