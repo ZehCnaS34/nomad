@@ -1,9 +1,12 @@
-use crate::ast::node::atom_node::AtomNode;
-use crate::ast::node::Node;
-use crate::ast::parser::Tag;
-use crate::ast::CHILD_LIMIT;
-use crate::copy;
-use crate::interpreter::{Execute, Interpreter, Introspection};
+use crate::{
+    ast::{
+        node,
+        node::{AtomNode, Node},
+        Tag, CHILD_LIMIT,
+    },
+    copy,
+    interpreter::{Execute, Interpreter, Introspection},
+};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy)]

@@ -1,16 +1,18 @@
 mod symbol;
 mod var;
 
-use crate::ast::node::atom_node::AtomNode::Boolean;
-use crate::ast::node::Tag;
-use crate::interpreter::Operation;
-use crate::interpreter::{Execute, Interpreter};
-use std::cmp::{Eq, Ord, Ordering};
-use std::fmt;
-use std::ops::Deref;
-use std::ops::{Add, Div, Mul, Sub};
-use std::str::FromStr;
-pub use symbol::Symbol;
+use crate::{
+    ast::Tag,
+    interpreter,
+    interpreter::{Execute, Interpreter, Operation},
+};
+use std::{
+    cmp::{Eq, Ord, Ordering},
+    fmt,
+    ops::{Add, Deref, Div, Mul, Sub},
+    str::FromStr,
+};
+pub use symbol::{Symbol, ToSymbol};
 pub use var::Var;
 
 #[derive(Clone)]
@@ -23,6 +25,7 @@ pub enum AtomNode {
     String(String),
     Vector(Vec<AtomNode>),
     Var(Var),
+    Function(Tag),
 }
 
 pub trait ToRational {
@@ -46,6 +49,7 @@ impl fmt::Debug for AtomNode {
             AtomNode::String(s) => write!(f, "{}", s),
             AtomNode::Var(s) => write!(f, "{:?}", s),
             AtomNode::Vector(s) => write!(f, "{:?}", s),
+            AtomNode::Function(s) => write!(f, "{:?}", s),
         }
     }
 }
@@ -61,6 +65,7 @@ impl fmt::Display for AtomNode {
             AtomNode::String(s) => write!(f, "{}", s),
             AtomNode::Var(s) => write!(f, "{:?}", s),
             AtomNode::Vector(s) => write!(f, "{:?}", s),
+            AtomNode::Function(s) => write!(f, "{:?}", s),
         }
     }
 }
@@ -93,14 +98,18 @@ impl AtomNode {
             _ => false,
         }
     }
+
+    pub fn make_symbol(value: &str) -> AtomNode {
+        AtomNode::Symbol(Symbol::from(value))
+    }
 }
 
-pub enum ParseError {
+pub enum AtomParseError {
     Eof,
 }
 
 impl FromStr for AtomNode {
-    type Err = ParseError;
+    type Err = AtomParseError;
 
     fn from_str(atom: &str) -> Result<Self, Self::Err> {
         if atom == "nil" {

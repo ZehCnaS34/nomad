@@ -1,6 +1,5 @@
-use crate::ast::node::atom_node::{AtomNode, Symbol};
-use crate::ast::node::Node;
-use crate::ast::parser::Tag;
+use crate::ast::node::{AtomNode, Node, Symbol};
+use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::interpreter::{Execute, Interpreter};
 use std::fmt;
@@ -22,16 +21,13 @@ impl DefinitionNode {
 
 impl Execute for DefinitionNode {
     fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
-        interpreter
+        let atom = interpreter
             .get_atom_node(self.ident)
-            .and_then(|atom| atom.as_symbol())
-            .map(|symbol| {
-                if symbol.is_qualified() {
-                    panic!("ident cannot be qualifed")
-                } else {
-                    interpreter.define(symbol.clone(), interpreter.interpret_tag(self.value))
-                }
-            })
-            .expect("Ident must be a symbol")
+            .expect("First slot of a definition node must be an atom");
+        let symbol = atom.as_symbol().expect("Ident must be a symbol");
+        if symbol.is_qualified() {
+            panic!("Definition nodes must be an unqualified symbol");
+        }
+        interpreter.define(symbol.clone(), interpreter.interpret_tag(self.value))
     }
 }

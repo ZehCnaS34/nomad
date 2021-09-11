@@ -1,6 +1,9 @@
 pub mod node;
 pub mod parser;
 pub mod scanner;
+pub mod tag;
+
+pub use tag::{Id, Tag, TagIter};
 
 pub struct Limits {
     pub function_call: usize,

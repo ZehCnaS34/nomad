@@ -1,13 +1,20 @@
-use super::ast::parser::AST;
-use crate::ast::node::atom_node::{AtomNode, Symbol, Var};
-use crate::ast::node::Node;
-use crate::parser::Tag;
+mod context;
+use context::Context;
+
 use std::collections::{HashMap, VecDeque};
 use std::ops::Deref;
 use std::sync::Mutex;
 
+use crate::ast::{
+    node::{AtomNode, Node, Symbol, Var},
+    parser::AST,
+    Tag,
+};
+
 pub(crate) trait Introspection {
     fn is_truthy(&self) -> bool;
+
+    fn show(self, label: &str) -> Self;
 }
 
 pub trait Execute {
@@ -21,6 +28,11 @@ impl Introspection for AtomNode {
             AtomNode::Nil => false,
             _ => true,
         }
+    }
+
+    fn show(self, label: &str) -> Self {
+        println!("{:?} :: {}", self, label);
+        self
     }
 }
 
@@ -40,6 +52,7 @@ pub trait Operation {
 #[derive(Debug)]
 pub struct Interpreter {
     ast: AST,
+    context: Context,
     values: Mutex<HashMap<Symbol, AtomNode>>,
     tag_data: Mutex<HashMap<Tag, AtomNode>>,
 }
@@ -50,6 +63,7 @@ impl Interpreter {
         queue.push_back(ast.root.unwrap());
         Interpreter {
             ast,
+            context: Context::new(),
             tag_data: Mutex::new(HashMap::new()),
             values: Mutex::new(HashMap::new()),
         }
@@ -96,7 +110,7 @@ impl Interpreter {
         // println!("tag {:?}", tag);
         let node = self.ast.get(&tag).unwrap();
         let atom = node.execute(&self, tag);
-        self.resolve(atom)
+        self.resolve(atom).show("label")
     }
 
     pub fn set_tag_data(&self, tag: Tag, data: AtomNode) {
@@ -105,27 +119,26 @@ impl Interpreter {
     }
 
     pub fn resolve(&self, atom: AtomNode) -> AtomNode {
-        match atom {
-            AtomNode::Symbol(symbol) => {
+        atom.as_symbol()
+            .map(|symbol| {
                 let mut values = self.values.lock().expect("Failed to lock values");
                 match values.get(&symbol) {
                     Some(atom) => atom.clone(),
                     None => match symbol.name() {
-                        "<" => AtomNode::Symbol(Symbol::from("<")),
-                        ">" => AtomNode::Symbol(Symbol::from(">")),
-                        "+" => AtomNode::Symbol(Symbol::from("+")),
-                        "-" => AtomNode::Symbol(Symbol::from("-")),
-                        "*" => AtomNode::Symbol(Symbol::from("*")),
-                        "/" => AtomNode::Symbol(Symbol::from("/")),
-                        "=" => AtomNode::Symbol(Symbol::from("=")),
-                        "mod" => AtomNode::Symbol(Symbol::from("mod")),
-                        "println" => AtomNode::Symbol(Symbol::from("println")),
+                        "<" => AtomNode::make_symbol("<"),
+                        ">" => AtomNode::make_symbol(">"),
+                        "+" => AtomNode::make_symbol("+"),
+                        "-" => AtomNode::make_symbol("-"),
+                        "*" => AtomNode::make_symbol("*"),
+                        "/" => AtomNode::make_symbol("/"),
+                        "=" => AtomNode::make_symbol("="),
+                        "mod" => AtomNode::make_symbol("mod"),
+                        "println" => AtomNode::make_symbol("println"),
                         name => panic!("no runtime constant {:?}", name),
                     },
                 }
-            }
-            atom => atom,
-        }
+            })
+            .unwrap_or(atom)
     }
 
     pub fn define(&self, symbol: Symbol, value: AtomNode) -> AtomNode {

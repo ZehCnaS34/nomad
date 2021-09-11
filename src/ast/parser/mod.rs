@@ -1,31 +1,20 @@
-use crate::ast::node::do_node::DoNode;
-use crate::ast::node::program_node::ProgramNode;
 use std::cell::Cell;
-use std::str::FromStr;
-
-// use super::node::Node;
-use super::node::atom_node;
-use super::node::atom_node::{AtomNode, ParseError};
-use super::node::def_node;
-use super::node::def_node::DefinitionNode;
-use super::node::function_node::FunctionCallNode;
-use super::node::while_node::WhileNode;
-use super::scanner::token::{Kind, Token};
-use crate::result::parser::ErrorKind as Error;
-use crate::result::ParseResult as Result;
+use std::collections::{HashMap, VecDeque};
 use std::fmt;
-
-use crate::ast::node::atom_node::Symbol;
-use crate::ast::node::if_node::IfNode;
-use crate::ast::node::Node;
-use crate::ast::CHILD_LIMIT;
-use im::HashMap;
-use std::collections::VecDeque;
 use std::fmt::Formatter;
+use std::str::FromStr;
 use std::sync::Mutex;
 
-type Id = usize;
-type Ids = Vec<Id>;
+use crate::result::parser::ErrorKind as Error;
+use crate::result::ParseResult as Result;
+
+use super::node::{
+    AtomNode, AtomParseError, DefinitionNode, DoNode, FunctionCallNode, FunctionNode, IfNode,
+    LoopNode, Node, ProgramNode, RecurNode, VectorNode, WhileNode,
+};
+use super::scanner::token::{Kind, Token};
+use super::CHILD_LIMIT;
+use super::{Id, Tag};
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum Form {
@@ -37,61 +26,13 @@ enum Form {
     If,
     Do,
     Def,
+    Fn,
     Loop,
     Recur,
 }
 
-#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-pub enum Tag {
-    Noop,
-    Atom(Id),
-    Definition(Id),
-    While(Id),
-    If(Id),
-    Call(Id),
-    Program(Id),
-    Vector(Id),
-    Let(Id),
-    Do(Id),
-}
-
-pub struct TagIter<'a> {
-    current: usize,
-    tags: &'a [Tag],
-}
-
-impl Tag {
-    pub fn tags(tags: &[Tag]) -> TagIter {
-        TagIter { tags, current: 0 }
-    }
-
-    pub fn len(tags: &[Tag]) -> usize {
-        let mut i = 0;
-        for _ in Tag::tags(tags) {
-            i += 1;
-        }
-        return i;
-    }
-}
-
-impl<'a> Iterator for TagIter<'a> {
-    type Item = Tag;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current >= self.tags.len() {
-            return None;
-        }
-        let tag = self.tags[self.current];
-        if tag == Tag::Noop {
-            return None;
-        }
-        self.current += 1;
-        Some(tag)
-    }
-}
-
-impl From<atom_node::ParseError> for Error {
-    fn from(parse_error: atom_node::ParseError) -> Error {
+impl From<AtomParseError> for Error {
+    fn from(parse_error: AtomParseError) -> Error {
         Error::CouldNotParseAtom
     }
 }
@@ -142,13 +83,17 @@ impl Parser {
         let mut ast = self.ast.lock().unwrap();
         let value = ast.len();
         let tag = match &node {
-            Node::Do(..) => Tag::Do(value),
-            Node::Program(..) => Tag::Program(value),
-            Node::FunctionCall(..) => Tag::Call(value),
-            Node::While(..) => Tag::While(value),
-            Node::If(..) => Tag::If(value),
             Node::Atom(..) => Tag::Atom(value),
             Node::Definition(..) => Tag::Definition(value),
+            Node::Do(..) => Tag::Do(value),
+            Node::FunctionCall(..) => Tag::Call(value),
+            Node::Function(..) => Tag::Function(value),
+            Node::If(..) => Tag::If(value),
+            Node::Program(..) => Tag::Program(value),
+            Node::Vector(..) => Tag::Vector(value),
+            Node::While(..) => Tag::While(value),
+            Node::Loop(..) => Tag::Loop(value),
+            Node::Recur(..) => Tag::Recur(value),
             node => panic!("node not yet implemented {:?}", node),
         };
         ast.insert(tag, node);
@@ -183,6 +128,7 @@ impl Parser {
                     "while" if !symbol.is_qualified() => Form::While,
                     "if" if !symbol.is_qualified() => Form::If,
                     "do" if !symbol.is_qualified() => Form::Do,
+                    "fn" if !symbol.is_qualified() => Form::Fn,
                     _ => Form::Call,
                 },
                 _ => Form::Call,
@@ -216,8 +162,16 @@ impl Parser {
             Form::If => self.submit(Node::If(IfNode::from_tags(&tags[1..]))),
             Form::Def => self.submit(Node::Definition(DefinitionNode::from_tags(&tags[1..]))),
             Form::Do => self.submit(Node::Do(DoNode::from_tags(&tags[1..]))),
+            Form::Fn => self.submit(Node::Function(FunctionNode::from_tags(&tags[1..]))),
+            Form::Loop => self.submit(Node::Loop(LoopNode::from_tags(&tags[1..]))),
+            Form::Recur => self.submit(Node::Recur(RecurNode::from_tags(&tags[1..]))),
             form => panic!("form {:?} not yet implemented", form),
         })
+    }
+
+    fn vector(&self) -> Result<Tag> {
+        let mut tags = self.take_until(Kind::RightBracket)?;
+        Ok(self.submit(Node::Vector(VectorNode::from_tags(&tags[..]))))
     }
 
     fn expression(&self) -> Result<Tag> {
@@ -229,6 +183,7 @@ impl Parser {
                 Ok(id)
             }
             Kind::LeftParen => self.nested(),
+            Kind::LeftBracket => self.vector(),
             kind => {
                 todo!("{:?}", kind);
             }

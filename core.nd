@@ -1,8 +1,10 @@
-(def sum 100000)
-(def max 1000000)
+(def max 100)
 
-(while (< sum max)
-  (println sum)
-  (def sum (+ sum 1)))
+(fn print-to [max]
+  (loop [current 0]
+    (if (< current max)
+      (do (println "current" current)
+          (recur (+ current 1)))
+      current)))
 
-(println "done")
+(print-to 4)

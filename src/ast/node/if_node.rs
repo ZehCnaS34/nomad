@@ -1,6 +1,5 @@
-use crate::ast::node::atom_node::AtomNode;
-use crate::ast::node::Node;
-use crate::ast::parser::Tag;
+use crate::ast::node::{AtomNode, Node};
+use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::interpreter::{Execute, Interpreter};
 use std::fmt;

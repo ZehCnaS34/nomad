@@ -1,5 +1,5 @@
-use crate::ast::node::atom_node::AtomNode;
-use crate::ast::parser::Tag;
+use crate::ast::node::AtomNode;
+use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::copy;
 use crate::interpreter::{Execute, Interpreter};

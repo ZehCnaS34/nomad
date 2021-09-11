@@ -1,29 +1,22 @@
-use crate::ast::node::atom_node::Symbol;
-use crate::ast::node::atom_node::{AtomNode, ToRational};
-use crate::ast::node::Node;
-use crate::ast::parser::Tag;
-use crate::ast::CHILD_LIMIT;
-use crate::copy;
-use crate::interpreter::Introspection;
-use crate::interpreter::Operation;
-use crate::interpreter::{Execute, Interpreter};
 use std::any::Any;
 use std::fmt;
+
+use crate::{
+    ast,
+    ast::{
+        node,
+        node::{AtomNode, Node, Symbol, ToRational},
+        Tag, CHILD_LIMIT,
+    },
+    copy, interpreter,
+    interpreter::{Execute, Interpreter, Introspection, Operation},
+    take_tags,
+};
 
 trait Show {
     fn show(self) -> Self
     where
         Self: Sized + fmt::Debug;
-}
-
-impl Show for AtomNode {
-    fn show(self) -> Self
-    where
-        Self: fmt::Debug + Sized,
-    {
-        println!("self {:?}", self);
-        self
-    }
 }
 
 #[derive(Debug, Clone)]
@@ -43,17 +36,17 @@ impl FunctionCallNode {
 
 macro_rules! order_check {
     ($interpreter:ident, $arguments:expr, $operation:expr ) => {
-        match crate::ast::parser::Tag::len(&$arguments) {
-            0 => crate::ast::node::atom_node::AtomNode::Boolean(true),
+        match crate::ast::Tag::len(&$arguments) {
+            0 => crate::ast::node::AtomNode::Boolean(true),
             1 => {
                 crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]);
-                crate::ast::node::atom_node::AtomNode::Boolean(true)
+                crate::ast::node::AtomNode::Boolean(true)
             }
             n => {
                 let mut flag = true;
                 let mut last_value =
                     crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]);
-                for tag in crate::ast::parser::Tag::tags(&$arguments[1..]) {
+                for tag in crate::ast::Tag::tags(&$arguments[1..]) {
                     let current =
                         crate::interpreter::Interpreter::interpret_tag(&$interpreter, tag);
                     if $operation(&last_value, &current).unwrap().is_truthy() {
@@ -71,13 +64,13 @@ macro_rules! order_check {
 
 macro_rules! accumulate {
     ($interpreter:ident, $arguments:expr, $operation:expr, $default:expr ) => {
-        match crate::ast::parser::Tag::len(&$arguments) {
+        match crate::ast::Tag::len(&$arguments) {
             0 => $default,
             1 => crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]),
             n => {
                 let mut sum =
                     crate::interpreter::Interpreter::interpret_tag(&$interpreter, $arguments[0]);
-                for tag in crate::ast::parser::Tag::tags(&$arguments[1..]) {
+                for tag in crate::ast::Tag::tags(&$arguments[1..]) {
                     let current =
                         crate::interpreter::Interpreter::interpret_tag(&$interpreter, tag);
                     sum = $operation(&sum, &current).unwrap();
@@ -146,17 +139,37 @@ impl Execute for FunctionCallNode {
 pub enum FunctionNode {
     Named {
         name: Tag,
-        parameters: [Tag; CHILD_LIMIT.function_call],
+        parameters: Tag,
         body: [Tag; CHILD_LIMIT.while_body],
     },
     Anonymous {
-        parameters: [Tag; CHILD_LIMIT.function_call],
+        parameters: Tag,
         body: [Tag; CHILD_LIMIT.while_body],
     },
 }
 
+impl FunctionNode {
+    pub fn from_tags(tags: &[Tag]) -> FunctionNode {
+        if tags[0].is_atom() {
+            FunctionNode::Named {
+                name: tags[0],
+                parameters: tags[1],
+                body: copy! { tags, 2, CHILD_LIMIT.while_body },
+            }
+        } else if tags[0].is_vector() {
+            FunctionNode::Anonymous {
+                parameters: tags[0],
+                body: copy! { tags, 1, CHILD_LIMIT.while_body },
+            }
+        } else {
+            panic!("Function definitions must start is either a identity or")
+        }
+    }
+}
+
 impl Execute for FunctionNode {
     fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
-        todo!();
+        println!("defining node {:#?}", self);
+        AtomNode::Nil
     }
 }

@@ -6,19 +6,19 @@ use crate::copy;
 use crate::interpreter::{Execute, Interpreter};
 
 #[derive(Debug, Clone)]
-pub struct ListNode {
+pub struct VectorNode {
     items: [Tag; CHILD_LIMIT.program],
 }
 
-impl ListNode {
+impl VectorNode {
     pub fn from_tags(tags: &[Tag]) -> Self {
-        ListNode {
+        VectorNode {
             items: copy! { tags, 0, CHILD_LIMIT.program },
         }
     }
 }
 
-impl Execute for ListNode {
+impl Execute for VectorNode {
     fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
         todo!();
     }

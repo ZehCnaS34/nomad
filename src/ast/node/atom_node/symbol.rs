@@ -5,6 +5,16 @@ pub struct Symbol {
     literal: String,
 }
 
+pub trait ToSymbol {
+    fn to_symbol(&self) -> Symbol;
+}
+
+impl ToSymbol for Symbol {
+    fn to_symbol(&self) -> Symbol {
+        self.clone()
+    }
+}
+
 impl fmt::Debug for Symbol {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.literal)

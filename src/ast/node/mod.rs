@@ -1,30 +1,47 @@
-use crate::ast::node::atom_node::AtomNode;
-use crate::ast::parser::Tag;
+use crate::ast::Tag;
 use crate::interpreter::{Execute, Interpreter};
 
-pub mod atom_node;
-pub mod def_node;
-pub mod do_node;
-pub mod function_node;
-pub mod if_node;
-pub mod list_node;
-pub mod program_node;
-pub mod while_node;
+mod atom_node;
+mod def_node;
+mod do_node;
+mod function_node;
+mod if_node;
+mod list_node;
+mod loop_node;
+mod program_node;
+mod recur_node;
+mod vector_node;
+mod while_node;
+
+pub use atom_node::{AtomNode, AtomParseError, Symbol, ToRational, ToSymbol, Var};
+pub use def_node::DefinitionNode;
+pub use do_node::DoNode;
+pub use function_node::{FunctionCallNode, FunctionNode};
+pub use if_node::IfNode;
+pub use list_node::ListNode;
+pub use loop_node::LoopNode;
+pub use program_node::ProgramNode;
+pub use recur_node::RecurNode;
+pub use vector_node::VectorNode;
+pub use while_node::WhileNode;
 
 #[derive(Debug, Clone)]
 pub enum Node {
     /// Represents a constant value in nomad.
     /// things like number, string, symbol
-    Atom(atom_node::AtomNode),
+    Atom(AtomNode),
     /// Represents an anonymous or named function
-    Function(function_node::FunctionNode),
-    FunctionCall(function_node::FunctionCallNode),
-    Definition(def_node::DefinitionNode),
-    If(if_node::IfNode),
-    While(while_node::WhileNode),
-    List(list_node::ListNode),
-    Do(do_node::DoNode),
-    Program(program_node::ProgramNode),
+    Function(FunctionNode),
+    FunctionCall(FunctionCallNode),
+    Definition(DefinitionNode),
+    If(IfNode),
+    While(WhileNode),
+    List(ListNode),
+    Do(DoNode),
+    Program(ProgramNode),
+    Vector(VectorNode),
+    Recur(RecurNode),
+    Loop(LoopNode),
 }
 
 impl Node {
@@ -48,6 +65,9 @@ impl Execute for Node {
             Node::List(node) => node.execute(interpreter, own_tag),
             Node::Do(node) => node.execute(interpreter, own_tag),
             Node::Program(node) => node.execute(interpreter, own_tag),
+            Node::Vector(node) => node.execute(interpreter, own_tag),
+            Node::Loop(node) => node.execute(interpreter, own_tag),
+            Node::Recur(node) => node.execute(interpreter, own_tag),
         }
     }
 }
