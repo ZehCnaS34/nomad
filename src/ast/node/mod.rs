@@ -1,73 +1,65 @@
 use crate::ast::Tag;
 use crate::interpreter::{Execute, Interpreter};
 
-mod atom_node;
+mod boolean_node;
 mod def_node;
 mod do_node;
 mod function_node;
 mod if_node;
+mod keyword_node;
 mod list_node;
 mod loop_node;
+mod number_node;
 mod program_node;
 mod recur_node;
+mod string_node;
+mod symbol_node;
 mod vector_node;
 mod while_node;
 
-pub use atom_node::{AtomNode, AtomParseError, Symbol, ToRational, ToSymbol, Var};
+pub use boolean_node::BooleanNode;
 pub use def_node::DefinitionNode;
 pub use do_node::DoNode;
-pub use function_node::{FunctionCallNode, FunctionNode};
+pub use function_node::FunctionCallNode;
+pub use function_node::FunctionNode;
 pub use if_node::IfNode;
+pub use keyword_node::KeywordNode;
 pub use list_node::ListNode;
 pub use loop_node::LoopNode;
+pub use number_node::NumberNode;
 pub use program_node::ProgramNode;
 pub use recur_node::RecurNode;
+pub use string_node::StringNode;
+pub use symbol_node::SymbolNode;
 pub use vector_node::VectorNode;
 pub use while_node::WhileNode;
 
 #[derive(Debug, Clone)]
 pub enum Node {
-    /// Represents a constant value in nomad.
-    /// things like number, string, symbol
-    Atom(AtomNode),
-    /// Represents an anonymous or named function
-    Function(FunctionNode),
-    FunctionCall(FunctionCallNode),
-    Definition(DefinitionNode),
-    If(IfNode),
-    While(WhileNode),
-    List(ListNode),
-    Do(DoNode),
-    Program(ProgramNode),
-    Vector(VectorNode),
-    Recur(RecurNode),
-    Loop(LoopNode),
+    Nil,
+    Boolean(boolean_node::BooleanNode),
+    Number(number_node::NumberNode),
+    String(string_node::StringNode),
+    Symbol(symbol_node::SymbolNode),
+    Keyword(keyword_node::KeywordNode),
+    Function(function_node::FunctionNode),
+    FunctionCall(function_node::FunctionCallNode),
+    Definition(def_node::DefinitionNode),
+    If(if_node::IfNode),
+    While(while_node::WhileNode),
+    List(list_node::ListNode),
+    Do(do_node::DoNode),
+    Program(program_node::ProgramNode),
+    Vector(vector_node::VectorNode),
+    Recur(recur_node::RecurNode),
+    Loop(loop_node::LoopNode),
 }
 
 impl Node {
-    pub fn as_atom(&self) -> Option<&atom_node::AtomNode> {
+    pub fn as_symbol(&self) -> Option<&SymbolNode> {
         match self {
-            Node::Atom(node) => Some(node),
+            Node::Symbol(symbol) => Some(symbol),
             _ => None,
-        }
-    }
-}
-
-impl Execute for Node {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
-        match self {
-            Node::Atom(node) => node.execute(interpreter, own_tag),
-            Node::Function(node) => node.execute(interpreter, own_tag),
-            Node::FunctionCall(node) => node.execute(interpreter, own_tag),
-            Node::Definition(node) => node.execute(interpreter, own_tag),
-            Node::If(node) => node.execute(interpreter, own_tag),
-            Node::While(node) => node.execute(interpreter, own_tag),
-            Node::List(node) => node.execute(interpreter, own_tag),
-            Node::Do(node) => node.execute(interpreter, own_tag),
-            Node::Program(node) => node.execute(interpreter, own_tag),
-            Node::Vector(node) => node.execute(interpreter, own_tag),
-            Node::Loop(node) => node.execute(interpreter, own_tag),
-            Node::Recur(node) => node.execute(interpreter, own_tag),
         }
     }
 }

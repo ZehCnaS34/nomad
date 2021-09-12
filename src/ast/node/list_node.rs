@@ -1,5 +1,4 @@
 use super::Node;
-use crate::ast::node::AtomNode;
 use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::copy;
@@ -15,11 +14,5 @@ impl ListNode {
         ListNode {
             items: copy! { tags, 0, CHILD_LIMIT.program },
         }
-    }
-}
-
-impl Execute for ListNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
-        todo!();
     }
 }

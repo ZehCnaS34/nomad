@@ -1,11 +1,13 @@
-mod scanner {
+pub mod scanner {
     #[derive(Debug)]
     pub enum ErrorKind {}
 }
 
-mod runtime {
+pub mod runtime {
     #[derive(Debug)]
-    pub enum ErrorKind {}
+    pub enum ErrorKind {
+        NotDefined,
+    }
 }
 
 pub mod parser {

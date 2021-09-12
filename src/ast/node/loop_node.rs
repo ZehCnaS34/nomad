@@ -1,4 +1,4 @@
-use crate::ast::node::{AtomNode, Node};
+use crate::ast::node::Node;
 use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::copy;
@@ -17,11 +17,5 @@ impl LoopNode {
             bindings: tags[0],
             body: copy! { tags, 1, CHILD_LIMIT.while_body },
         }
-    }
-}
-
-impl Execute for LoopNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
-        todo!("loop node");
     }
 }

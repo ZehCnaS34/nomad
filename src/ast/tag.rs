@@ -7,7 +7,11 @@ pub enum Tag {
     Noop,
 
     // Base case
-    Atom(Id),
+    Nil(Id),
+    Boolean(Id),
+    Number(Id),
+    String(Id),
+    Symbol(Id),
 
     // Defining bindings
     Definition(Id),
@@ -61,9 +65,20 @@ impl Tag {
         }
     }
 
+    pub fn on_symbol(&self) -> Option<&Tag> {
+        match self {
+            Tag::Symbol(_) => Some(self),
+            _ => None,
+        }
+    }
+
     pub fn is_atom(&self) -> bool {
         match self {
-            Tag::Atom(_) => true,
+            Tag::Nil(_) => true,
+            Tag::Boolean(_) => true,
+            Tag::Number(_) => true,
+            Tag::String(_) => true,
+            Tag::Symbol(_) => true,
             _ => false,
         }
     }

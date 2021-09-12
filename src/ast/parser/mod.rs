@@ -8,10 +8,7 @@ use std::sync::Mutex;
 use crate::result::parser::ErrorKind as Error;
 use crate::result::ParseResult as Result;
 
-use super::node::{
-    AtomNode, AtomParseError, DefinitionNode, DoNode, FunctionCallNode, FunctionNode, IfNode,
-    LoopNode, Node, ProgramNode, RecurNode, VectorNode, WhileNode,
-};
+use super::node as n;
 use super::scanner::token::{Kind, Token};
 use super::CHILD_LIMIT;
 use super::{Id, Tag};
@@ -31,15 +28,9 @@ enum Form {
     Recur,
 }
 
-impl From<AtomParseError> for Error {
-    fn from(parse_error: AtomParseError) -> Error {
-        Error::CouldNotParseAtom
-    }
-}
-
 #[derive(Debug)]
 pub struct AST {
-    nodes: HashMap<Tag, Node>,
+    nodes: HashMap<Tag, n::Node>,
     pub root: Option<Tag>,
 }
 
@@ -51,7 +42,7 @@ impl AST {
         }
     }
 
-    pub fn get(&self, tag: &Tag) -> Option<&Node> {
+    pub fn get(&self, tag: &Tag) -> Option<&n::Node> {
         self.nodes.get(tag)
     }
 
@@ -59,7 +50,7 @@ impl AST {
         self.nodes.len()
     }
 
-    fn insert(&mut self, id: Tag, node: Node) {
+    fn insert(&mut self, id: Tag, node: n::Node) {
         self.root = Some(id);
         self.nodes.insert(id, node);
     }
@@ -79,21 +70,25 @@ impl Parser {
     }
 
     #[inline]
-    fn submit(&self, node: Node) -> Tag {
+    fn submit(&self, node: n::Node) -> Tag {
         let mut ast = self.ast.lock().unwrap();
         let value = ast.len();
         let tag = match &node {
-            Node::Atom(..) => Tag::Atom(value),
-            Node::Definition(..) => Tag::Definition(value),
-            Node::Do(..) => Tag::Do(value),
-            Node::FunctionCall(..) => Tag::Call(value),
-            Node::Function(..) => Tag::Function(value),
-            Node::If(..) => Tag::If(value),
-            Node::Program(..) => Tag::Program(value),
-            Node::Vector(..) => Tag::Vector(value),
-            Node::While(..) => Tag::While(value),
-            Node::Loop(..) => Tag::Loop(value),
-            Node::Recur(..) => Tag::Recur(value),
+            n::Node::Nil => Tag::Nil(value),
+            n::Node::Boolean(..) => Tag::Boolean(value),
+            n::Node::Number(..) => Tag::Number(value),
+            n::Node::String(..) => Tag::String(value),
+            n::Node::Symbol(..) => Tag::Symbol(value),
+            n::Node::Definition(..) => Tag::Definition(value),
+            n::Node::Do(..) => Tag::Do(value),
+            n::Node::FunctionCall(..) => Tag::Call(value),
+            n::Node::Function(..) => Tag::Function(value),
+            n::Node::If(..) => Tag::If(value),
+            n::Node::Program(..) => Tag::Program(value),
+            n::Node::Vector(..) => Tag::Vector(value),
+            n::Node::While(..) => Tag::While(value),
+            n::Node::Loop(..) => Tag::Loop(value),
+            n::Node::Recur(..) => Tag::Recur(value),
             node => panic!("node not yet implemented {:?}", node),
         };
         ast.insert(tag, node);
@@ -118,23 +113,24 @@ impl Parser {
     }
 
     fn special_form(&self, tag: Tag) -> Form {
-        let ast = self.ast.lock().unwrap();
-        match ast.nodes.get(&tag).unwrap() {
-            Node::Atom(atom) => match atom {
-                AtomNode::Symbol(symbol) => match symbol.name() {
-                    "def" if !symbol.is_qualified() => Form::Def,
-                    "loop" if !symbol.is_qualified() => Form::Loop,
-                    "recur" if !symbol.is_qualified() => Form::Recur,
-                    "while" if !symbol.is_qualified() => Form::While,
-                    "if" if !symbol.is_qualified() => Form::If,
-                    "do" if !symbol.is_qualified() => Form::Do,
-                    "fn" if !symbol.is_qualified() => Form::Fn,
-                    _ => Form::Call,
-                },
-                _ => Form::Call,
-            },
-            _ => Form::Call,
-        }
+        tag.on_symbol()
+            .and_then(|tag| {
+                let ast = self.ast.lock().expect("Failed to lock ast mutex");
+                ast.nodes
+                    .get(tag)
+                    .and_then(|node| node.as_symbol())
+                    .map(|symbol| match symbol.name() {
+                        "def" if !symbol.is_qualified() => Form::Def,
+                        "loop" if !symbol.is_qualified() => Form::Loop,
+                        "recur" if !symbol.is_qualified() => Form::Recur,
+                        "while" if !symbol.is_qualified() => Form::While,
+                        "if" if !symbol.is_qualified() => Form::If,
+                        "do" if !symbol.is_qualified() => Form::Do,
+                        "fn" if !symbol.is_qualified() => Form::Fn,
+                        _ => Form::Call,
+                    })
+            })
+            .unwrap_or(Form::Call)
     }
 
     fn take_until(&self, kind: Kind) -> Result<[Tag; 50]> {
@@ -157,30 +153,43 @@ impl Parser {
         let first = tags[0];
         // println!("tags {:?}", tags);
         Ok(match self.special_form(first) {
-            Form::Call => self.submit(Node::FunctionCall(FunctionCallNode::from_tags(&tags[..]))),
-            Form::While => self.submit(Node::While(WhileNode::from_tags(&tags[1..]))),
-            Form::If => self.submit(Node::If(IfNode::from_tags(&tags[1..]))),
-            Form::Def => self.submit(Node::Definition(DefinitionNode::from_tags(&tags[1..]))),
-            Form::Do => self.submit(Node::Do(DoNode::from_tags(&tags[1..]))),
-            Form::Fn => self.submit(Node::Function(FunctionNode::from_tags(&tags[1..]))),
-            Form::Loop => self.submit(Node::Loop(LoopNode::from_tags(&tags[1..]))),
-            Form::Recur => self.submit(Node::Recur(RecurNode::from_tags(&tags[1..]))),
+            Form::Call => self.submit(n::Node::FunctionCall(n::FunctionCallNode::from_tags(
+                &tags[..],
+            ))),
+            Form::While => self.submit(n::Node::While(n::WhileNode::from_tags(&tags[1..]))),
+            Form::If => self.submit(n::Node::If(n::IfNode::from_tags(&tags[1..]))),
+            Form::Def => self.submit(n::Node::Definition(n::DefinitionNode::from_tags(
+                &tags[1..],
+            ))),
+            Form::Do => self.submit(n::Node::Do(n::DoNode::from_tags(&tags[1..]))),
+            Form::Fn => self.submit(n::Node::Function(n::FunctionNode::from_tags(&tags[1..]))),
+            Form::Loop => self.submit(n::Node::Loop(n::LoopNode::from_tags(&tags[1..]))),
+            Form::Recur => self.submit(n::Node::Recur(n::RecurNode::from_tags(&tags[1..]))),
             form => panic!("form {:?} not yet implemented", form),
         })
     }
 
     fn vector(&self) -> Result<Tag> {
         let mut tags = self.take_until(Kind::RightBracket)?;
-        Ok(self.submit(Node::Vector(VectorNode::from_tags(&tags[..]))))
+        Ok(self.submit(n::Node::Vector(n::VectorNode::from_tags(&tags[..]))))
     }
 
     fn expression(&self) -> Result<Tag> {
         let token = self.take()?;
         match token.kind {
-            Kind::Symbol | Kind::String | Kind::Number => {
-                let atom = AtomNode::from_str(&token.lexeme[..])?;
-                let id = self.submit(Node::Atom(atom));
-                Ok(id)
+            Kind::Symbol => match &token.lexeme[..] {
+                "nil" => Ok(self.submit(n::Node::Nil)),
+                "true" => Ok(self.submit(n::Node::Boolean(n::BooleanNode(true)))),
+                "false" => Ok(self.submit(n::Node::Boolean(n::BooleanNode(false)))),
+                lexeme => Ok(self.submit(n::Node::Symbol(n::SymbolNode::from(lexeme)))),
+            },
+            Kind::Number => {
+                let number: f64 = (&token.lexeme[..]).parse().expect("Failed to parse number");
+                Ok(self.submit(n::Node::Number(n::NumberNode(number))))
+            }
+            Kind::String => {
+                let lexeme = &token.lexeme[..];
+                Ok(self.submit(n::Node::String(n::StringNode::from(lexeme))))
             }
             Kind::LeftParen => self.nested(),
             Kind::LeftBracket => self.vector(),
@@ -207,7 +216,7 @@ impl Parser {
                 }
             }
         }
-        Ok(self.submit(Node::Program(ProgramNode::from(&expressions[..]))))
+        Ok(self.submit(n::Node::Program(n::ProgramNode::from(&expressions[..]))))
     }
 }
 

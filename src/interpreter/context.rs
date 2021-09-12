@@ -1,48 +1,48 @@
-use crate::ast::node::{Symbol, ToSymbol};
+use crate::interpreter::value::{Symbol, Value};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
 mod namespace {
-    use crate::ast::node::{AtomNode, Symbol, ToSymbol};
+    use crate::interpreter::value::{Symbol, Value};
     use std::collections::HashMap;
 
+    #[derive(Debug)]
     pub struct Namespace {
         name: Symbol,
-        bindings: HashMap<Symbol, AtomNode>,
+        bindings: HashMap<Symbol, Value>,
     }
 
     impl Namespace {
-        pub fn new<S>(name: S) -> Namespace
-        where
-            S: ToSymbol,
-        {
+        pub fn new(name: Symbol) -> Namespace {
+            if name.is_qualified() {
+                panic!("namespaces should never have a qualified name");
+            }
             Namespace {
-                name: name.to_symbol(),
+                name,
                 bindings: HashMap::new(),
             }
         }
 
-        pub fn bind(&mut self, name: Symbol, atom: AtomNode) {
+        pub fn bind(&mut self, name: Symbol, atom: Value) {
             self.bindings.insert(name, atom);
         }
-
     }
 }
 
 mod pointers {
-    use crate::ast::node::{Symbol, ToSymbol};
+    use crate::interpreter::value::{Symbol, Value};
 
+    #[derive(Debug)]
     pub struct Pointers {
         namespace: Symbol,
     }
 
     impl Pointers {
-        pub fn set_namespace<S: ToSymbol>(&mut self, symbol: S)  {
-            let namespace_name = symbol.to_symbol();
-            if namespace_name.is_qualified() {
+        pub fn set_namespace(&mut self, symbol: Symbol) {
+            if symbol.is_qualified() {
                 panic!("Namespaces should not be qualified.");
             }
-            self.namespace = namespace_name;
+            self.namespace = symbol;
         }
 
         pub fn new() -> Pointers {
@@ -56,6 +56,7 @@ mod pointers {
 use namespace::Namespace;
 use pointers::Pointers;
 
+#[derive(Debug)]
 pub struct Context {
     namespaces: Mutex<HashMap<Symbol, Namespace>>,
     pointers: Mutex<Pointers>,
@@ -67,12 +68,6 @@ impl Context {
             namespaces: Mutex::new(HashMap::new()),
             pointers: Mutex::new(Pointers::new()),
         };
-
-        let plus: Symbol = Symbol::from("nomad.core/+");
-        let minus: Symbol = Symbol::from("nomad.core/-");
-        let div: Symbol = Symbol::from("nomad.core//");
-        let mult: Symbol = Symbol::from("nomad.core/*");
-
         context
     }
 }

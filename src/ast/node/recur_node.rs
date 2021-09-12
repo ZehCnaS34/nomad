@@ -1,4 +1,4 @@
-use crate::ast::node::{AtomNode, Node};
+use crate::ast::node::Node;
 use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::copy;
@@ -15,11 +15,5 @@ impl RecurNode {
         RecurNode {
             bindings: copy! { tags, 0, CHILD_LIMIT.function_call },
         }
-    }
-}
-
-impl Execute for RecurNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
-        todo!("loop node");
     }
 }

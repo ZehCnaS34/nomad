@@ -1,4 +1,4 @@
-use crate::ast::node::{AtomNode, Node};
+use crate::ast::node::Node;
 use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::interpreter::{Execute, Interpreter};
@@ -27,17 +27,6 @@ impl IfNode {
             condition: tags[0],
             true_branch: tags[1],
             false_branch: tags[2],
-        }
-    }
-}
-
-impl Execute for IfNode {
-    fn execute(&self, interpreter: &Interpreter, own_tag: Tag) -> AtomNode {
-        interpreter.interpret_tag(self.condition);
-        if interpreter.is_tag_true(self.condition) {
-            interpreter.interpret_tag(self.true_branch)
-        } else {
-            interpreter.interpret_tag(self.false_branch)
         }
     }
 }
