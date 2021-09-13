@@ -2,7 +2,7 @@ use super::Node;
 use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
 use crate::copy;
-use crate::interpreter::{Execute, Interpreter};
+use crate::interpreter::{Interpreter};
 
 #[derive(Debug, Clone)]
 pub struct ListNode {

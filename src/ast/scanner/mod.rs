@@ -156,6 +156,7 @@ impl Scanner {
     }
 
     fn scan_number(&self) -> Option<Token> {
+        println!("scanning number");
         let digits = || {
             while self.is_digit() {
                 self.eat();
@@ -166,7 +167,7 @@ impl Scanner {
             self.eat();
             digits();
         }
-        self.make_token(Kind::Symbol)
+        self.make_token(Kind::Number)
     }
 
     fn peek(&self) -> Option<char> {

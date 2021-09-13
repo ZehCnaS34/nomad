@@ -1,7 +1,7 @@
 use crate::ast::node::Node;
 use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
-use crate::interpreter::{Execute, Interpreter};
+use crate::interpreter::{Interpreter};
 use std::fmt;
 
 #[derive(Debug, Clone, Copy)]

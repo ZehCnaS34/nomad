@@ -1,5 +1,5 @@
 use crate::ast::Tag;
-use crate::interpreter::{Execute, Interpreter};
+use crate::interpreter::{Interpreter};
 
 mod boolean_node;
 mod def_node;
@@ -37,22 +37,22 @@ pub use while_node::WhileNode;
 #[derive(Debug, Clone)]
 pub enum Node {
     Nil,
-    Boolean(boolean_node::BooleanNode),
-    Number(number_node::NumberNode),
-    String(string_node::StringNode),
-    Symbol(symbol_node::SymbolNode),
-    Keyword(keyword_node::KeywordNode),
-    Function(function_node::FunctionNode),
-    FunctionCall(function_node::FunctionCallNode),
-    Definition(def_node::DefinitionNode),
-    If(if_node::IfNode),
-    While(while_node::WhileNode),
-    List(list_node::ListNode),
-    Do(do_node::DoNode),
-    Program(program_node::ProgramNode),
-    Vector(vector_node::VectorNode),
-    Recur(recur_node::RecurNode),
-    Loop(loop_node::LoopNode),
+    Boolean(BooleanNode),
+    Number(NumberNode),
+    String(StringNode),
+    Symbol(SymbolNode),
+    Keyword(KeywordNode),
+    Function(FunctionNode),
+    FunctionCall(FunctionCallNode),
+    Definition(DefinitionNode),
+    If(IfNode),
+    While(WhileNode),
+    List(ListNode),
+    Do(DoNode),
+    Program(ProgramNode),
+    Vector(VectorNode),
+    Recur(RecurNode),
+    Loop(LoopNode),
 }
 
 impl Node {

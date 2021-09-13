@@ -1,3 +1,5 @@
+use crate::interpreter::node::SymbolNode;
+
 #[derive(Debug, Clone)]
 pub enum Value {
     Nil,
@@ -8,10 +10,31 @@ pub enum Value {
 }
 
 impl Value {
+    pub fn is_valid_identifier(&self) -> bool {
+        self.as_symbol()
+            .map(|symbol| !symbol.is_qualified())
+            .unwrap_or(false)
+    }
+
     pub fn as_symbol(&self) -> Option<&Symbol> {
         match self {
             Value::Symbol(symbol) => Some(symbol),
             _ => None,
+        }
+    }
+
+    pub fn take_symbol(self) -> Option<Symbol> {
+        match self {
+            Value::Symbol(symbol) => Some(symbol),
+            _ => None,
+        }
+    }
+
+    pub fn is_truthy(&self) -> bool {
+        match self {
+            Value::Boolean(v) => *v,
+            Value::Nil => false,
+            _ => true,
         }
     }
 }
@@ -23,6 +46,13 @@ pub struct Symbol {
 }
 
 impl Symbol {
+    pub fn from_node(node: SymbolNode) -> Symbol {
+        Symbol {
+            name: node.name().to_string(),
+            namespace: node.namespace().map(|namespace| namespace.to_string()),
+        }
+    }
+
     pub fn name(&self) -> &str {
         &self.name[..]
     }

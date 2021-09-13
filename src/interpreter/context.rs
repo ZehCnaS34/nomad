@@ -34,7 +34,7 @@ mod pointers {
 
     #[derive(Debug)]
     pub struct Pointers {
-        namespace: Symbol,
+        pub namespace: Symbol,
     }
 
     impl Pointers {
@@ -63,11 +63,31 @@ pub struct Context {
 }
 
 impl Context {
+    fn using_namespace<F>(&self, f: F)
+    where F: Fn(&mut Namespace) {
+        let mut namespaces = self.namespaces.lock().expect("Could not lock namespace map");
+        let mut pointers = self.pointers.lock().expect("Could not lock pointers");
+        println!("{:?} {:?}", namespaces, pointers);
+        let namespace = namespaces.get_mut(&pointers.namespace).expect("Namespace does not exist");
+        f(namespace);
+    }
+
+    pub fn new_namespace(&self, name: Symbol) {
+        let mut namespaces = self.namespaces.lock().expect("Could not lock namespace map");
+        namespaces.insert(name.clone(), Namespace::new(name));
+    }
+
     pub fn new() -> Context {
         let mut context = Context {
             namespaces: Mutex::new(HashMap::new()),
             pointers: Mutex::new(Pointers::new()),
         };
         context
+    }
+
+    pub fn define(&self, name: Symbol, atom: Value) {
+        self.using_namespace(|namespace| {
+            namespace.bind(name.clone(), atom.clone());
+        });
     }
 }

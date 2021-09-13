@@ -1,7 +1,7 @@
 use crate::ast::node::Node;
 use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
-use crate::interpreter::{Execute, Interpreter};
+use crate::interpreter::{Interpreter};
 use std::fmt;
 use std::vec::IntoIter;
 
@@ -16,5 +16,13 @@ impl DefinitionNode {
         let ident = tags[0];
         let value = tags[1];
         DefinitionNode { ident, value }
+    }
+
+    pub fn ident(&self) -> Tag {
+        self.ident
+    }
+
+    pub fn value(&self) -> Tag {
+        self.value
     }
 }

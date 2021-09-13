@@ -9,4 +9,8 @@ impl StringNode {
             literal: String::from(literal),
         }
     }
+
+    pub fn value(&self) -> &str {
+        &self.literal[..]
+    }
 }

@@ -8,9 +8,15 @@ impl SymbolNode {
     pub fn name(&self) -> &str {
         &self.name[..]
     }
+
+    pub fn namespace(&self) -> Option<&str> {
+        self.namespace.as_ref().map(|namespace| &namespace[..])
+    }
+
     pub fn is_qualified(&self) -> bool {
         self.namespace.is_some()
     }
+
     pub fn from(value: &str) -> SymbolNode {
         if value.len() == 1 {
             SymbolNode {
