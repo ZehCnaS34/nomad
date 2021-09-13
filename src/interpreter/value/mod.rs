@@ -1,4 +1,5 @@
-use crate::interpreter::node::SymbolNode;
+use crate::ast::node::SymbolNode;
+use crate::ast::Tag;
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -7,6 +8,15 @@ pub enum Value {
     Number(f64),
     String(String),
     Symbol(Symbol),
+    Var(Var),
+    Function(Function),
+    NativeFunction(NativeFunction)
+}
+
+#[derive(Debug, Clone)]
+pub enum NativeFunction {
+    Plus,
+    Minus,
 }
 
 impl Value {
@@ -19,6 +29,13 @@ impl Value {
     pub fn as_symbol(&self) -> Option<&Symbol> {
         match self {
             Value::Symbol(symbol) => Some(symbol),
+            _ => None,
+        }
+    }
+
+    pub fn take_function(self) -> Option<Function> {
+        match self {
+            Value::Function(function) => Some(function),
             _ => None,
         }
     }
@@ -46,6 +63,10 @@ pub struct Symbol {
 }
 
 impl Symbol {
+    pub fn qualify(&mut self, name: &str) {
+        self.namespace = Some(String::from(name))
+    }
+
     pub fn from_node(node: SymbolNode) -> Symbol {
         Symbol {
             name: node.name().to_string(),
@@ -56,9 +77,15 @@ impl Symbol {
     pub fn name(&self) -> &str {
         &self.name[..]
     }
+
+    pub fn namespace(&self) -> Option<&str> {
+        self.namespace.as_ref().map(|namespace| &namespace[..])
+    }
+
     pub fn is_qualified(&self) -> bool {
         self.namespace.is_some()
     }
+
     pub fn from(value: &str) -> Symbol {
         if value.len() == 1 {
             Symbol {
@@ -77,4 +104,25 @@ impl Symbol {
             }
         }
     }
+
+    pub fn to_var(&self) -> Var {
+        let name = self.name();
+        let namespace = self.namespace().expect("Var's must be qualified");
+        Var {
+            name: String::from(name),
+            namespace: String::from(namespace),
+        }
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct Var {
+    name: String,
+    namespace: String,
+}
+
+#[derive(Debug, Clone)]
+pub struct Function {
+    pub parameters: Tag,
+    pub body: Vec<Tag>,
 }

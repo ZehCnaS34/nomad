@@ -1,10 +1,5 @@
 (def max 100)
+(def inc (fn [v] (+ 1 v)))
 
-(fn print-to [max]
-  (loop [current 0]
-    (if (< current max)
-      (do (println "current" current)
-          (recur (+ current 1)))
-      current)))
-
-(print-to 4)
+(inc 4)
+(inc 3)

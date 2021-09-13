@@ -2,13 +2,14 @@ mod context;
 use crate::result::RuntimeResult;
 use context::Context;
 mod value;
-use value::{Symbol, Value};
 use execution::Execute;
 use std::collections::{HashMap, VecDeque};
 use std::ops::Deref;
 use std::sync::Mutex;
+use value::{Symbol, Value};
 
-use crate::ast::{node, parser::AST, Tag};
+use crate::ast::{node, node::Node, parser::AST, Tag};
+use crate::interpreter::value::NativeFunction;
 
 pub(crate) trait Introspection {
     fn is_truthy(&self) -> bool;
@@ -40,6 +41,8 @@ impl Interpreter {
     fn new(ast: AST) -> Interpreter {
         let mut context = Context::new();
         context.new_namespace(Symbol::from("nomad.core"));
+        context.define(Symbol::from("+"), Value::NativeFunction(NativeFunction::Plus));
+        context.define(Symbol::from("-"), Value::NativeFunction(NativeFunction::Minus));
         let mut queue = VecDeque::new();
         queue.push_back(ast.root.unwrap());
         Interpreter {
@@ -49,37 +52,37 @@ impl Interpreter {
         }
     }
 
+    pub fn dump_context(&self) {
+        self.context.dump();
+    }
+
     #[inline]
     pub(crate) fn put(&self, symbol: value::Symbol, atom: value::Value) {
         let mut values = self.values.lock().unwrap();
         values.insert(symbol, atom);
     }
 
+    pub fn get_node(&self, tag: Tag) -> Option<Node> {
+        self.ast.get(&tag).cloned()
+    }
+
     #[inline]
     pub(crate) fn interpret_tag(&self, tag: Tag) -> Value {
+        println!("interpreting {:?}", tag);
         let node = self.ast.get(&tag).unwrap();
         node.execute(&self)
     }
 
-    pub fn resolve(&self, atom: Value) -> RuntimeResult<Value> {
-        let symbol = atom
-            .as_symbol()
-            .ok_or(crate::result::runtime::ErrorKind::NotDefined)?;
-        let mut values = self.values.lock().expect("Failed to lock values");
-        let value = values
-            .get(&symbol)
-            .ok_or(crate::result::runtime::ErrorKind::NotDefined)?;
-        Ok(value.clone())
+    pub fn resolve(&self, symbol: &Symbol) -> RuntimeResult<Value> {
+        Ok(self.context.resolve(symbol))
     }
 
     pub fn define(&self, symbol: Symbol, value: Value) -> Value {
-        println!("{:?} {:?}", symbol, value);
-        self.context.define(symbol, value);
-        println!("{:#?}", self.context);
-        todo!("define needs to be implemented");
-        // let mut values = self.values.lock().expect("Failed to lock values");
-        // values.insert(symbol.clone(), value);
-        // ::Var(Var::make(("awesome", symbol.name())))
+        Value::Var(self.context.define(symbol.clone(), value))
+    }
+
+    pub fn set(&self, symbol: Symbol, value: Value) {
+        self.context.set(symbol, value);
     }
 
     fn run(&self) {
@@ -92,13 +95,14 @@ impl Interpreter {
 pub fn interpret(ast: AST) {
     let env = Interpreter::new(ast);
     env.run();
+    env.dump_context();
 }
 
 mod execution {
-    use crate::ast::tag::*;
-    use crate::ast::node::*;
-    use super::Interpreter;
     use super::value::*;
+    use super::Interpreter;
+    use crate::ast::node::*;
+    use crate::ast::tag::*;
 
     pub trait Execute {
         fn execute(&self, interpreter: &Interpreter) -> Value;
@@ -106,12 +110,13 @@ mod execution {
 
     impl Execute for Node {
         fn execute(&self, interpreter: &Interpreter) -> Value {
+            println!("execute {:?}", self);
             match self {
                 Node::Boolean(node) => Value::Boolean(node.value()),
                 Node::Definition(node) => node.execute(interpreter),
                 Node::Do(node) => node.execute(interpreter),
-                Node::Function(node) => todo!(),
-                Node::FunctionCall(node) => todo!(),
+                Node::Function(node) => node.execute(interpreter),
+                Node::FunctionCall(node) => node.execute(interpreter),
                 Node::If(node) => node.execute(interpreter),
                 Node::Keyword(..) => todo!("keywords are no done"),
                 Node::List(node) => todo!(),
@@ -122,10 +127,15 @@ mod execution {
                 Node::Recur(node) => todo!(),
                 Node::String(node) => Value::String(String::from(node.value())),
                 Node::Symbol(node) => Value::Symbol(Symbol::from_node(node.clone())),
-                Node::Vector(node) => todo!(),
+                Node::Vector(node) => node.execute(interpreter),
                 Node::While(node) => node.execute(interpreter),
-            
             }
+        }
+    }
+
+    impl Execute for VectorNode {
+        fn execute(&self, interpreter: &Interpreter) -> Value {
+            todo!("Failed")
         }
     }
 
@@ -183,6 +193,78 @@ mod execution {
                 result = interpreter.interpret_tag(tag);
             }
             result
+        }
+    }
+
+    impl Execute for FunctionCallNode {
+        fn execute(&self, interpreter: &Interpreter) -> Value {
+            let function = interpreter.interpret_tag(self.function());
+            match function {
+                Value::NativeFunction(function) => match function {
+                    NativeFunction::Minus => {
+                        todo!()
+                    }
+                    NativeFunction::Plus => {
+                        todo!()
+                    }
+                }
+                Value::Symbol(symbol) => {
+                    interpreter.context.push_scope();
+                    let value = interpreter.resolve(&symbol).expect("Value does not exist");
+                    let function = value.take_function().expect("Not a function");
+                    let arguments = self
+                        .arguments()
+                        .into_iter()
+                        .map(|tag| interpreter.interpret_tag(tag));
+                    // this is a smell i think
+                    let parameters = {
+                        let node = interpreter
+                            .get_node(function.parameters)
+                            .and_then(Node::take_vector)
+                            .expect("Paramters should be a vector node");
+                        node.items()
+                            .into_iter()
+                            .map(|tag| interpreter.interpret_tag(tag))
+                            .map(|value| value.take_symbol().expect("Parameters should be symbols"))
+                    };
+                    for (s, v) in parameters.zip(arguments) {
+                        interpreter.set(s, v);
+                    }
+                    for b in function.body {
+                        interpreter.interpret_tag(b);
+                    }
+                    interpreter.dump_context();
+                    // interpreter.dump_context();
+                    // println!("{:#?}", self);
+                    todo!("eval")
+                }
+                Value::Function(function) => {
+                    todo!("eval")
+                }
+                value => panic!("Cannot call {:?}", value),
+            }
+        }
+    }
+
+    impl Execute for FunctionNode {
+        fn execute(&self, interpreter: &Interpreter) -> Value {
+            self.name()
+                .map(|name| {
+                    let name = interpreter.interpret_tag(name);
+                    let name = name.take_symbol().expect("Function names must be a symbol");
+                    let value = Value::Function(Function {
+                        parameters: self.parameters(),
+                        body: self.body(),
+                    });
+                    // interpreter.define(name, value)
+                    value
+                })
+                .unwrap_or_else(|| {
+                    Value::Function(Function {
+                        parameters: self.parameters(),
+                        body: self.body(),
+                    })
+                })
         }
     }
 }

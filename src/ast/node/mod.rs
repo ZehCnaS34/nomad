@@ -1,5 +1,5 @@
 use crate::ast::Tag;
-use crate::interpreter::{Interpreter};
+use crate::interpreter::Interpreter;
 
 mod boolean_node;
 mod def_node;
@@ -59,6 +59,13 @@ impl Node {
     pub fn as_symbol(&self) -> Option<&SymbolNode> {
         match self {
             Node::Symbol(symbol) => Some(symbol),
+            _ => None,
+        }
+    }
+
+    pub fn take_vector(self) -> Option<VectorNode> {
+        match self {
+            Node::Vector(node) => Some(node),
             _ => None,
         }
     }

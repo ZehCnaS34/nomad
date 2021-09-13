@@ -113,24 +113,25 @@ impl Parser {
     }
 
     fn special_form(&self, tag: Tag) -> Form {
-        tag.on_symbol()
-            .and_then(|tag| {
-                let ast = self.ast.lock().expect("Failed to lock ast mutex");
-                ast.nodes
-                    .get(tag)
-                    .and_then(|node| node.as_symbol())
-                    .map(|symbol| match symbol.name() {
-                        "def" if !symbol.is_qualified() => Form::Def,
-                        "loop" if !symbol.is_qualified() => Form::Loop,
-                        "recur" if !symbol.is_qualified() => Form::Recur,
-                        "while" if !symbol.is_qualified() => Form::While,
-                        "if" if !symbol.is_qualified() => Form::If,
-                        "do" if !symbol.is_qualified() => Form::Do,
-                        "fn" if !symbol.is_qualified() => Form::Fn,
-                        _ => Form::Call,
-                    })
-            })
-            .unwrap_or(Form::Call)
+        if let Some(tag) = tag.on_symbol() {
+            let ast = self.ast.lock().expect("Failed to lock ast mutex");
+            if let Some(symbol) = ast.nodes.get(tag).and_then(n::Node::as_symbol) {
+                match symbol.name() {
+                    "def" if !symbol.is_qualified() => Form::Def,
+                    "loop" if !symbol.is_qualified() => Form::Loop,
+                    "recur" if !symbol.is_qualified() => Form::Recur,
+                    "while" if !symbol.is_qualified() => Form::While,
+                    "if" if !symbol.is_qualified() => Form::If,
+                    "do" if !symbol.is_qualified() => Form::Do,
+                    "fn" if !symbol.is_qualified() => Form::Fn,
+                    _ => Form::Call,
+                }
+            } else {
+                Form::Call
+            }
+        } else {
+            Form::Call
+        }
     }
 
     fn take_until(&self, kind: Kind) -> Result<[Tag; 50]> {

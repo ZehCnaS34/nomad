@@ -1,7 +1,7 @@
 use crate::ast::node::Node;
 use crate::ast::Tag;
 use crate::ast::CHILD_LIMIT;
-use crate::interpreter::{Interpreter};
+use crate::interpreter::Interpreter;
 use std::fmt;
 use std::vec::IntoIter;
 

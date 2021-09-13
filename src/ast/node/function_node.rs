@@ -1,6 +1,7 @@
 use std::any::Any;
 use std::fmt;
 
+use crate::ast::TagIter;
 use crate::{
     ast,
     ast::{Tag, CHILD_LIMIT},
@@ -15,8 +16,8 @@ trait Show {
 
 #[derive(Debug, Clone)]
 pub struct FunctionCallNode {
-    pub function: Tag,
-    pub arguments: [Tag; CHILD_LIMIT.function_call],
+    function: Tag,
+    arguments: [Tag; CHILD_LIMIT.function_call],
 }
 
 impl FunctionCallNode {
@@ -25,6 +26,14 @@ impl FunctionCallNode {
             function: tags[0],
             arguments: copy! { tags, 1, CHILD_LIMIT.function_call },
         }
+    }
+
+    pub fn function(&self) -> Tag {
+        self.function
+    }
+
+    pub fn arguments(&self) -> Vec<Tag> {
+        Tag::tags(&self.arguments[..]).collect()
     }
 }
 
@@ -42,6 +51,28 @@ pub enum FunctionNode {
 }
 
 impl FunctionNode {
+    pub fn parameters(&self) -> Tag {
+        match self {
+            FunctionNode::Anonymous { parameters, .. } => *parameters,
+            FunctionNode::Named { parameters, .. } => *parameters,
+        }
+    }
+
+    pub fn body(&self) -> Vec<Tag> {
+        Tag::tags(match self {
+            FunctionNode::Anonymous { body, .. } => body,
+            FunctionNode::Named { body, .. } => body,
+        })
+        .collect()
+    }
+
+    pub fn name(&self) -> Option<Tag> {
+        match self {
+            FunctionNode::Anonymous { .. } => None,
+            FunctionNode::Named { name, .. } => Some(*name),
+        }
+    }
+
     pub fn from_tags(tags: &[Tag]) -> FunctionNode {
         if tags[0].is_atom() {
             FunctionNode::Named {
