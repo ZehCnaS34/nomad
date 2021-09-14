@@ -2,6 +2,7 @@ use crate::ast::Tag;
 use crate::interpreter::Interpreter;
 
 mod boolean_node;
+mod decorator_node;
 mod def_node;
 mod do_node;
 mod function_node;
@@ -18,9 +19,9 @@ mod string_node;
 mod symbol_node;
 mod vector_node;
 mod while_node;
-mod decorator_node;
 
 pub use boolean_node::BooleanNode;
+pub use decorator_node::DecoratorNode;
 pub use def_node::DefinitionNode;
 pub use do_node::DoNode;
 pub use function_node::FunctionCallNode;
@@ -38,7 +39,6 @@ pub use string_node::StringNode;
 pub use symbol_node::SymbolNode;
 pub use vector_node::VectorNode;
 pub use while_node::WhileNode;
-pub use decorator_node::DecoratorNode;
 
 #[derive(Debug, Clone)]
 pub enum Node {

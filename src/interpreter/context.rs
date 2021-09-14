@@ -31,10 +31,10 @@ mod namespace {
         }
 
         pub fn get(&self, name: &Symbol) -> Value {
-            self.bindings
-                .get(name)
-                .cloned()
-                .expect("Value does not exist")
+            match self.bindings.get(name).cloned() {
+                Some(value) => value,
+                _ => panic!("Symbol not found {:?}", name),
+            }
         }
     }
 }

@@ -192,7 +192,9 @@ impl Parser {
     fn decorator(&self) -> Result<Tag> {
         let mutator = self.expression()?;
         let target = self.expression()?;
-        Ok(self.submit(n::Node::Decorator(n::DecoratorNode::from_tags(mutator, target))))
+        Ok(self.submit(n::Node::Decorator(n::DecoratorNode::from_tags(
+            mutator, target,
+        ))))
     }
 
     fn expression(&self) -> Result<Tag> {

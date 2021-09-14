@@ -8,8 +8,6 @@ pub struct MetaNode {
 
 impl MetaNode {
     pub fn from_tags(data: Tag, target: Tag) -> MetaNode {
-        MetaNode {
-            data, target
-        }
+        MetaNode { data, target }
     }
 }

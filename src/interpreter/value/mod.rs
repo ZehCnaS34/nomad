@@ -33,6 +33,9 @@ impl fmt::Display for Value {
 pub enum NativeFunction {
     Plus,
     Minus,
+    Multiply,
+    DumpContext,
+    Eq,
     Print,
     Println,
     LessThan,

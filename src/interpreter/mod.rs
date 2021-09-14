@@ -40,6 +40,11 @@ impl Interpreter {
             Value::NativeFunction(NativeFunction::Now),
         );
         context.define(
+            Symbol::from("dump-context"),
+            Value::NativeFunction(NativeFunction::DumpContext),
+        );
+        context.define(Symbol::from("="), Value::NativeFunction(NativeFunction::Eq));
+        context.define(
             Symbol::from("<"),
             Value::NativeFunction(NativeFunction::LessThan),
         );
@@ -50,6 +55,10 @@ impl Interpreter {
         context.define(
             Symbol::from("+"),
             Value::NativeFunction(NativeFunction::Plus),
+        );
+        context.define(
+            Symbol::from("*"),
+            Value::NativeFunction(NativeFunction::Multiply),
         );
         context.define(
             Symbol::from("-"),
@@ -80,6 +89,14 @@ impl Interpreter {
         }
     }
 
+    fn eq(&self, lhs: &Value, rhs: &Value) -> Value {
+        use Value::{Boolean, Number};
+        match (lhs, rhs) {
+            (Number(l), Number(r)) => Boolean(l == r),
+            pair => panic!("lt not defined {:?}", pair),
+        }
+    }
+
     fn gt(&self, lhs: &Value, rhs: &Value) -> Value {
         use Value::{Boolean, Number};
         match (lhs, rhs) {
@@ -100,6 +117,14 @@ impl Interpreter {
         use Value::Number;
         match (lhs, rhs) {
             (Number(l), Number(r)) => Number(l - r),
+            pair => panic!("add not defined {:?}", pair),
+        }
+    }
+
+    fn mul(&self, lhs: &Value, rhs: &Value) -> Value {
+        use Value::Number;
+        match (lhs, rhs) {
+            (Number(l), Number(r)) => Number(l * r),
             pair => panic!("add not defined {:?}", pair),
         }
     }
@@ -282,151 +307,180 @@ mod execution {
 
     impl Execute for FunctionCallNode {
         fn execute(&self, interpreter: &Interpreter) -> Value {
-            let function = interpreter.interpret_tag(self.function());
+            let function = interpreter.interpret_and_resolve_tag(self.function());
             match function {
-                Value::Symbol(symbol) => {
-                    let value = interpreter.resolve(&symbol).expect("Value does not exist");
-                    match value {
-                        Value::Function(function) => {
-                            let arguments = self
-                                .arguments()
-                                .into_iter()
-                                .map(|tag| interpreter.interpret_tag(tag));
-
-                            let parameters = {
-                                let node = interpreter
-                                    .get_node(function.parameters)
-                                    .and_then(Node::take_vector)
-                                    .expect("Paramters should be a vector node");
-                                node.items()
-                                    .into_iter()
-                                    .map(|tag| interpreter.interpret_tag(tag))
-                                    .map(|value| {
-                                        value.take_symbol().expect("Parameters should be symbols")
-                                    })
-                            };
-
-                            let mut result = Value::Nil;
-                            interpreter.context.push_scope();
-                            for (s, v) in parameters.zip(arguments) {
-                                interpreter.set(s, v);
-                            }
-                            for b in function.body {
-                                result = interpreter.interpret_tag(b);
-                            }
-                            interpreter.context.pop_scope();
-                            result
-                        }
-                        Value::NativeFunction(native) => match native {
-                            NativeFunction::Now => {
-                                let start = SystemTime::now();
-                                let since_the_epoch = start
-                                    .duration_since(UNIX_EPOCH)
-                                    .expect("time went backwards");
-                                Value::Number(since_the_epoch.as_millis() as f64)
-                            }
-                            NativeFunction::Plus => {
-                                let mut arguments = self.arguments().into_iter();
-                                match arguments.len() {
-                                    0 => Value::Number(0.0),
-                                    1 => interpreter.interpret_tag(arguments.next().unwrap()),
-                                    n => {
-                                        let mut base = interpreter.interpret_and_resolve_tag(
-                                            arguments.next().expect("Name"),
-                                        );
-                                        for tag in arguments {
-                                            let value = interpreter.interpret_and_resolve_tag(tag);
-                                            base = interpreter.add(&base, &value);
-                                        }
-                                        base
-                                    }
-                                }
-                            }
-                            NativeFunction::Minus => {
-                                let mut arguments = self.arguments().into_iter();
-                                match arguments.len() {
-                                    0 => Value::Number(0.0),
-                                    1 => interpreter.interpret_tag(arguments.next().unwrap()),
-                                    n => {
-                                        let mut base = interpreter.interpret_and_resolve_tag(
-                                            arguments.next().expect("Name"),
-                                        );
-                                        for tag in arguments {
-                                            let value = interpreter.interpret_and_resolve_tag(tag);
-                                            base = interpreter.sub(&base, &value);
-                                        }
-                                        base
-                                    }
-                                }
-                            },
-                            NativeFunction::Print => {
-                                let mut arguments = self.arguments().into_iter();
-                                for (i, arg) in arguments.enumerate() {
-                                    let value = interpreter.interpret_and_resolve_tag(arg);
-                                    if i != 0 {
-                                        print!(" ");
-                                    }
-                                    print!("{}", value);
-                                }
-                                Value::Nil
-                            }
-                            NativeFunction::Println => {
-                                let mut arguments = self.arguments().into_iter();
-                                for (i, arg) in arguments.enumerate() {
-                                    let value = interpreter.interpret_and_resolve_tag(arg);
-                                    if i != 0 {
-                                        print!(" ");
-                                    }
-                                    print!("{}", value);
-                                }
-                                print!("\n");
-                                Value::Nil
-                            }
-                            NativeFunction::LessThan => {
-                                let mut arguments = self.arguments().into_iter();
-                                let mut flag = true;
-                                let mut last: Option<Value> = None;
-                                for arg in arguments {
-                                    let value = interpreter.interpret_and_resolve_tag(arg);
-                                    if let Some(l) = &last {
-                                        if interpreter.lt(&l, &value).is_truthy() {
-                                            last = Some(value);
-                                        } else {
-                                            flag = false;
-                                            break;
-                                        }
-                                    } else {
-                                        last = Some(value);
-                                    }
-                                }
-                                Value::Boolean(flag)
-                            }
-                            NativeFunction::GreaterThan => {
-                                let mut arguments = self.arguments().into_iter();
-                                let mut flag = true;
-                                let mut last: Option<Value> = None;
-                                for arg in arguments {
-                                    let value = interpreter.interpret_and_resolve_tag(arg);
-                                    if let Some(l) = &last {
-                                        if interpreter.gt(&l, &value).is_truthy() {
-                                            last = Some(value);
-                                        } else {
-                                            flag = false;
-                                            break;
-                                        }
-                                    } else {
-                                        last = Some(value);
-                                    }
-                                }
-                                Value::Boolean(flag)
-                            }
-                        },
-                        _ => panic!("Failed"),
-                    }
-                }
                 Value::Function(function) => {
-                    todo!("eval")
+                    let parameters = interpreter
+                        .get_node(function.parameters)
+                        .and_then(Node::take_vector)
+                        .expect("Paramters should be a vector node")
+                        .items()
+                        .into_iter()
+                        .map(|tag| {
+                            interpreter
+                                .interpret_tag(tag)
+                                .take_symbol()
+                                .expect("Parameters should be symbols.")
+                        })
+                        .zip(
+                            self.arguments()
+                                .into_iter()
+                                .map(|tag| interpreter.interpret_and_resolve_tag(tag)),
+                        );
+
+                    let mut result = Value::Nil;
+                    for (s, v) in parameters {
+                        interpreter.set(s, v);
+                    }
+                    // a new scope must be defined after the parameters are set
+                    interpreter.context.push_scope();
+                    for b in function.body {
+                        result = interpreter.interpret_tag(b);
+                    }
+                    interpreter.context.pop_scope();
+                    result
                 }
+                Value::NativeFunction(native) => match native {
+                    NativeFunction::Now => {
+                        let start = SystemTime::now();
+                        let since_the_epoch = start
+                            .duration_since(UNIX_EPOCH)
+                            .expect("time went backwards");
+                        Value::Number(since_the_epoch.as_millis() as f64)
+                    }
+                    NativeFunction::Plus => {
+                        let mut arguments = self.arguments().into_iter();
+                        match arguments.len() {
+                            0 => Value::Number(0.0),
+                            1 => interpreter.interpret_tag(arguments.next().unwrap()),
+                            n => {
+                                let mut base = interpreter
+                                    .interpret_and_resolve_tag(arguments.next().expect("Name"));
+                                for tag in arguments {
+                                    let value = interpreter.interpret_and_resolve_tag(tag);
+                                    base = interpreter.add(&base, &value);
+                                }
+                                base
+                            }
+                        }
+                    }
+                    NativeFunction::Minus => {
+                        let mut arguments = self.arguments().into_iter();
+                        match arguments.len() {
+                            0 => Value::Number(0.0),
+                            1 => interpreter.interpret_and_resolve_tag(arguments.next().unwrap()),
+                            n => {
+                                let mut base = interpreter
+                                    .interpret_and_resolve_tag(arguments.next().expect("Name"));
+                                for tag in arguments {
+                                    let value = interpreter.interpret_and_resolve_tag(tag);
+                                    base = interpreter.sub(&base, &value);
+                                }
+                                base
+                            }
+                        }
+                    }
+                    NativeFunction::Multiply => {
+                        let mut arguments = self.arguments().into_iter();
+                        match arguments.len() {
+                            0 => Value::Number(1.0),
+                            1 => interpreter.interpret_and_resolve_tag(arguments.next().unwrap()),
+                            n => {
+                                let mut base = interpreter
+                                    .interpret_and_resolve_tag(arguments.next().expect("Name"));
+                                for tag in arguments {
+                                    let value = interpreter.interpret_and_resolve_tag(tag);
+                                    base = interpreter.mul(&base, &value);
+                                }
+                                base
+                            }
+                        }
+                    }
+                    NativeFunction::DumpContext => {
+                        interpreter.dump_context();
+                        Value::Nil
+                    }
+                    NativeFunction::Print => {
+                        let mut arguments = self.arguments().into_iter();
+                        for (i, arg) in arguments.enumerate() {
+                            let value = interpreter.interpret_and_resolve_tag(arg);
+                            if i != 0 {
+                                print!(" ");
+                            }
+                            print!("{}", value);
+                        }
+                        Value::Nil
+                    }
+                    NativeFunction::Println => {
+                        let mut arguments = self.arguments().into_iter();
+                        for (i, arg) in arguments.enumerate() {
+                            let value = interpreter.interpret_and_resolve_tag(arg);
+                            if i != 0 {
+                                print!(" ");
+                            }
+                            print!("{}", value);
+                        }
+                        print!("\n");
+                        Value::Nil
+                    }
+                    NativeFunction::Eq => {
+                        let mut arguments = self.arguments().into_iter();
+                        let mut flag = true;
+                        let mut last: Option<Value> = None;
+                        for arg in arguments {
+                            let value = interpreter.interpret_and_resolve_tag(arg);
+                            if let Some(l) = &last {
+                                if interpreter.eq(&l, &value).is_truthy() {
+                                    last = Some(value);
+                                } else {
+                                    flag = false;
+                                    break;
+                                }
+                            } else {
+                                last = Some(value);
+                            }
+                        }
+                        Value::Boolean(flag)
+                    }
+                    NativeFunction::LessThan => {
+                        let mut arguments = self.arguments().into_iter();
+                        let mut flag = true;
+                        let mut last: Option<Value> = None;
+                        for arg in arguments {
+                            let value = interpreter.interpret_and_resolve_tag(arg);
+                            if let Some(l) = &last {
+                                if interpreter.lt(&l, &value).is_truthy() {
+                                    last = Some(value);
+                                } else {
+                                    flag = false;
+                                    break;
+                                }
+                            } else {
+                                last = Some(value);
+                            }
+                        }
+                        Value::Boolean(flag)
+                    }
+                    NativeFunction::GreaterThan => {
+                        let mut arguments = self.arguments().into_iter();
+                        let mut flag = true;
+                        let mut last: Option<Value> = None;
+                        for arg in arguments {
+                            let value = interpreter.interpret_and_resolve_tag(arg);
+                            if let Some(l) = &last {
+                                if interpreter.gt(&l, &value).is_truthy() {
+                                    last = Some(value);
+                                } else {
+                                    flag = false;
+                                    break;
+                                }
+                            } else {
+                                last = Some(value);
+                            }
+                        }
+                        Value::Boolean(flag)
+                    }
+                },
                 value => panic!("{:?} is not callable", value),
             }
         }

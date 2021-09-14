@@ -2,14 +2,12 @@ use crate::ast::Tag;
 
 #[derive(Clone, Debug)]
 pub struct QuoteNode {
-    expression: Tag
+    expression: Tag,
 }
 
 impl QuoteNode {
     pub fn from_tag(tag: Tag) -> QuoteNode {
-        QuoteNode {
-            expression: tag
-        }
+        QuoteNode { expression: tag }
     }
 
     pub fn expression(&self) -> Tag {

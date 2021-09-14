@@ -1,7 +1,19 @@
 (def *ns* nil)
 
-(set! *ns* 'nomad.core)
+(def *ns* 'nomad.core)
 
-(def version #version "0.0.0")
+(def inc (fn [value] (+ value 1)))
+(def dec (fn [value] (- value 1)))
+
+(println *ns*)
+
+(def fact
+  (fn [n]
+    (println n)
+    (if (= n 1)
+      n
+      (* n (fact (dec n))))))
+
+(println (fact 10))
 
 
