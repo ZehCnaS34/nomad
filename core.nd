@@ -1,11 +1,5 @@
-(def *ns* nil)
-
-(def *ns* 'nomad.core)
-
 (def inc (fn [value] (+ value 1)))
 (def dec (fn [value] (- value 1)))
-
-(println *ns*)
 
 (def fact
   (fn [n]
@@ -15,5 +9,6 @@
       (* n (fact (dec n))))))
 
 (println (fact 10))
+
 
 
