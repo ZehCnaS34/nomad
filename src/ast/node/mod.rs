@@ -55,6 +55,7 @@ pub enum Node {
     Definition(DefinitionNode),
     If(IfNode),
     While(WhileNode),
+    Let(LetNode),
     List(ListNode),
     Do(DoNode),
     Program(ProgramNode),

@@ -22,6 +22,7 @@ enum Form {
     While,
     If,
     Do,
+    Let,
     Def,
     Fn,
     Loop,
@@ -92,6 +93,7 @@ impl Parser {
             n::Node::Meta(..) => Tag::Meta(value),
             n::Node::Quote(..) => Tag::Quote(value),
             n::Node::Decorator(..) => Tag::Decorator(value),
+            n::Node::Let(..) => Tag::Let(value),
             node => panic!("node not yet implemented {:?}", node),
         };
         ast.insert(tag, node);
@@ -127,6 +129,7 @@ impl Parser {
                     "if" if !symbol.is_qualified() => Form::If,
                     "do" if !symbol.is_qualified() => Form::Do,
                     "fn" if !symbol.is_qualified() => Form::Fn,
+                    "let*" if !symbol.is_qualified() => Form::Let,
                     _ => Form::Call,
                 }
             } else {
@@ -169,6 +172,7 @@ impl Parser {
             Form::Fn => self.submit(n::Node::Function(n::FunctionNode::from_tags(&tags[1..]))),
             Form::Loop => self.submit(n::Node::Loop(n::LoopNode::from_tags(&tags[1..]))),
             Form::Recur => self.submit(n::Node::Recur(n::RecurNode::from_tags(&tags[1..]))),
+            Form::Let => self.submit(n::Node::Let(n::LetNode::from_tags(&tags[1..]))),
             form => panic!("form {:?} not yet implemented", form),
         })
     }

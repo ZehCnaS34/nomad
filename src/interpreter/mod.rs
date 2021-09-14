@@ -231,6 +231,7 @@ mod execution {
                 Node::FunctionCall(node) => node.execute(interpreter),
                 Node::If(node) => node.execute(interpreter),
                 Node::Keyword(..) => todo!("keywords are no done"),
+                Node::Let(node) => todo!("need to implement let"),
                 Node::List(node) => todo!(),
                 Node::Loop(node) => todo!(),
                 Node::Nil => Value::Nil,
