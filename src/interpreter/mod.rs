@@ -11,12 +11,6 @@ use value::{Symbol, Value};
 use crate::ast::{node, node::Node, parser::AST, Tag};
 use crate::interpreter::value::NativeFunction;
 
-pub(crate) trait Introspection {
-    fn is_truthy(&self) -> bool;
-
-    fn show(self, label: &str) -> Self;
-}
-
 pub trait Operation {
     type Val;
     type Err;
@@ -41,14 +35,60 @@ impl Interpreter {
     fn new(ast: AST) -> Interpreter {
         let mut context = Context::new();
         context.new_namespace(Symbol::from("nomad.core"));
-        context.define(Symbol::from("+"), Value::NativeFunction(NativeFunction::Plus));
-        context.define(Symbol::from("-"), Value::NativeFunction(NativeFunction::Minus));
+        context.define(
+            Symbol::from("<"),
+            Value::NativeFunction(NativeFunction::LessThan),
+        );
+        context.define(
+            Symbol::from(">"),
+            Value::NativeFunction(NativeFunction::GreaterThan),
+        );
+        context.define(
+            Symbol::from("+"),
+            Value::NativeFunction(NativeFunction::Plus),
+        );
+        context.define(
+            Symbol::from("-"),
+            Value::NativeFunction(NativeFunction::Minus),
+        );
+        context.define(
+            Symbol::from("print"),
+            Value::NativeFunction(NativeFunction::Print),
+        );
+        context.define(
+            Symbol::from("println"),
+            Value::NativeFunction(NativeFunction::Println),
+        );
         let mut queue = VecDeque::new();
         queue.push_back(ast.root.unwrap());
         Interpreter {
             ast,
             context,
             values: Mutex::new(HashMap::new()),
+        }
+    }
+
+    fn lt(&self, lhs: &Value, rhs: &Value) -> Value {
+        use Value::{Boolean, Number};
+        match (lhs, rhs) {
+            (Number(l), Number(r)) => Boolean(l < r),
+            pair => panic!("lt not defined {:?}", pair),
+        }
+    }
+
+    fn gt(&self, lhs: &Value, rhs: &Value) -> Value {
+        use Value::{Boolean, Number};
+        match (lhs, rhs) {
+            (Number(l), Number(r)) => Boolean(l > r),
+            pair => panic!("gt not defined {:?}", pair),
+        }
+    }
+
+    fn add(&self, lhs: &Value, rhs: &Value) -> Value {
+        use Value::Number;
+        match (lhs, rhs) {
+            (Number(l), Number(r)) => Number(l + r),
+            pair => panic!("add not defined {:?}", pair),
         }
     }
 
@@ -68,13 +108,25 @@ impl Interpreter {
 
     #[inline]
     pub(crate) fn interpret_tag(&self, tag: Tag) -> Value {
-        println!("interpreting {:?}", tag);
         let node = self.ast.get(&tag).unwrap();
         node.execute(&self)
     }
 
+    pub fn interpret_and_resolve_tag(&self, tag: Tag) -> Value {
+        let value = self.interpret_tag(tag);
+        value
+            .as_symbol()
+            .and_then(|symbol| self.resolve(symbol).ok())
+            .unwrap_or(value)
+            .show()
+    }
+
     pub fn resolve(&self, symbol: &Symbol) -> RuntimeResult<Value> {
-        Ok(self.context.resolve(symbol))
+        Ok(self
+            .context
+            .get(symbol)
+            .or_else(|| Some(self.context.resolve(symbol)))
+            .unwrap())
     }
 
     pub fn define(&self, symbol: Symbol, value: Value) -> Value {
@@ -87,7 +139,7 @@ impl Interpreter {
 
     fn run(&self) {
         if let Some(tag) = self.ast.root {
-            println!("result = {:?}", self.interpret_tag(tag));
+            self.interpret_tag(tag);
         }
     }
 }
@@ -95,7 +147,7 @@ impl Interpreter {
 pub fn interpret(ast: AST) {
     let env = Interpreter::new(ast);
     env.run();
-    env.dump_context();
+    // env.dump_context();
 }
 
 mod execution {
@@ -110,7 +162,6 @@ mod execution {
 
     impl Execute for Node {
         fn execute(&self, interpreter: &Interpreter) -> Value {
-            println!("execute {:?}", self);
             match self {
                 Node::Boolean(node) => Value::Boolean(node.value()),
                 Node::Definition(node) => node.execute(interpreter),
@@ -200,48 +251,128 @@ mod execution {
         fn execute(&self, interpreter: &Interpreter) -> Value {
             let function = interpreter.interpret_tag(self.function());
             match function {
-                Value::NativeFunction(function) => match function {
-                    NativeFunction::Minus => {
-                        todo!()
-                    }
-                    NativeFunction::Plus => {
-                        todo!()
-                    }
-                }
                 Value::Symbol(symbol) => {
-                    interpreter.context.push_scope();
                     let value = interpreter.resolve(&symbol).expect("Value does not exist");
-                    let function = value.take_function().expect("Not a function");
-                    let arguments = self
-                        .arguments()
-                        .into_iter()
-                        .map(|tag| interpreter.interpret_tag(tag));
-                    // this is a smell i think
-                    let parameters = {
-                        let node = interpreter
-                            .get_node(function.parameters)
-                            .and_then(Node::take_vector)
-                            .expect("Paramters should be a vector node");
-                        node.items()
-                            .into_iter()
-                            .map(|tag| interpreter.interpret_tag(tag))
-                            .map(|value| value.take_symbol().expect("Parameters should be symbols"))
-                    };
-                    for (s, v) in parameters.zip(arguments) {
-                        interpreter.set(s, v);
+                    match value {
+                        Value::Function(function) => {
+                            let arguments = self
+                                .arguments()
+                                .into_iter()
+                                .map(|tag| interpreter.interpret_tag(tag));
+
+                            let parameters = {
+                                let node = interpreter
+                                    .get_node(function.parameters)
+                                    .and_then(Node::take_vector)
+                                    .expect("Paramters should be a vector node");
+                                node.items()
+                                    .into_iter()
+                                    .map(|tag| interpreter.interpret_tag(tag))
+                                    .map(|value| {
+                                        value.take_symbol().expect("Parameters should be symbols")
+                                    })
+                            };
+
+                            let mut result = Value::Nil;
+                            interpreter.context.push_scope();
+                            for (s, v) in parameters.zip(arguments) {
+                                interpreter.set(s, v);
+                            }
+                            for b in function.body {
+                                result = interpreter.interpret_tag(b);
+                            }
+                            interpreter.context.pop_scope();
+                            result
+                        }
+                        Value::NativeFunction(native) => match native {
+                            NativeFunction::Plus => {
+                                let mut arguments = self.arguments().into_iter();
+                                match arguments.len() {
+                                    0 => Value::Number(0.0),
+                                    1 => interpreter.interpret_tag(arguments.next().unwrap()),
+                                    n => {
+                                        interpreter.dump_context();
+                                        let mut base = interpreter.interpret_and_resolve_tag(
+                                            arguments.next().expect("Name"),
+                                        );
+                                        for tag in arguments {
+                                            let value = interpreter.interpret_and_resolve_tag(tag);
+                                            base = interpreter.add(&base, &value);
+                                        }
+                                        base
+                                    }
+                                }
+                            }
+                            NativeFunction::Minus => Value::Nil,
+                            NativeFunction::Print => {
+                                let mut arguments = self.arguments().into_iter();
+                                for (i, arg) in arguments.enumerate() {
+                                    let value = interpreter.interpret_and_resolve_tag(arg);
+                                    if i != 0 {
+                                        print!(" ");
+                                    }
+                                    print!("{}", value);
+                                }
+                                Value::Nil
+                            }
+                            NativeFunction::Println => {
+                                let mut arguments = self.arguments().into_iter();
+                                for (i, arg) in arguments.enumerate() {
+                                    let value = interpreter.interpret_and_resolve_tag(arg);
+                                    if i != 0 {
+                                        print!(" ");
+                                    }
+                                    print!("{}", value);
+                                }
+                                print!("\n");
+                                Value::Nil
+                            }
+                            NativeFunction::LessThan => {
+                                let mut arguments = self.arguments().into_iter();
+                                let mut flag = true;
+                                let mut last: Option<Value> = None;
+                                for arg in arguments {
+                                    let value = interpreter.interpret_and_resolve_tag(arg);
+                                    if let Some(l) = &last {
+                                        if interpreter.lt(&l, &value).is_truthy() {
+                                            last = Some(value);
+                                        } else {
+                                            flag = false;
+                                            break;
+                                        }
+                                    } else {
+                                        last = Some(value);
+                                    }
+                                }
+                                Value::Boolean(flag)
+                            }
+                            NativeFunction::GreaterThan => {
+                                let mut arguments = self.arguments().into_iter();
+                                let mut flag = true;
+                                let mut last: Option<Value> = None;
+                                for arg in arguments {
+                                    let value = interpreter.interpret_and_resolve_tag(arg);
+                                    if let Some(l) = &last {
+                                        if interpreter.gt(&l, &value).is_truthy() {
+                                            last = Some(value);
+                                        } else {
+                                            flag = false;
+                                            break;
+                                        }
+                                    } else {
+                                        last = Some(value);
+                                    }
+                                }
+                                Value::Boolean(flag)
+                            }
+                        },
+                        _ => panic!("Failed"),
                     }
-                    for b in function.body {
-                        interpreter.interpret_tag(b);
-                    }
-                    interpreter.dump_context();
-                    // interpreter.dump_context();
-                    // println!("{:#?}", self);
-                    todo!("eval")
                 }
                 Value::Function(function) => {
                     todo!("eval")
                 }
-                value => panic!("Cannot call {:?}", value),
+                value => panic!("{:?} is not callable", value),
             }
         }
     }

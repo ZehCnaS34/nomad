@@ -1,5 +1,6 @@
 use crate::ast::node::SymbolNode;
 use crate::ast::Tag;
+use std::fmt;
 
 #[derive(Debug, Clone)]
 pub enum Value {
@@ -10,16 +11,40 @@ pub enum Value {
     Symbol(Symbol),
     Var(Var),
     Function(Function),
-    NativeFunction(NativeFunction)
+    NativeFunction(NativeFunction),
+}
+
+impl fmt::Display for Value {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Value::Nil => write!(f, "nil"),
+            Value::Boolean(value) => write!(f, "{}", value),
+            Value::Number(value) => write!(f, "{}", value),
+            Value::String(value) => write!(f, "{}", value),
+            Value::Symbol(value) => write!(f, "{}", value),
+            Value::Var(value) => write!(f, "{}", value),
+            Value::Function(value) => write!(f, "[fn]"),
+            Value::NativeFunction(value) => write!(f, "[native]"),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub enum NativeFunction {
     Plus,
     Minus,
+    Print,
+    Println,
+    LessThan,
+    GreaterThan,
 }
 
 impl Value {
+    pub fn show(self) -> Self {
+        println!("value {}", self);
+        return self;
+    }
+
     pub fn is_valid_identifier(&self) -> bool {
         self.as_symbol()
             .map(|symbol| !symbol.is_qualified())
@@ -60,6 +85,16 @@ impl Value {
 pub struct Symbol {
     name: String,
     namespace: Option<String>,
+}
+
+impl fmt::Display for Symbol {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        if let Some(namespace) = self.namespace() {
+            write!(f, "{}/{}", namespace, self.name())
+        } else {
+            write!(f, "{}", self.name())
+        }
+    }
 }
 
 impl Symbol {
@@ -119,6 +154,22 @@ impl Symbol {
 pub struct Var {
     name: String,
     namespace: String,
+}
+
+impl Var {
+    pub fn name(&self) -> &str {
+        &self.name[..]
+    }
+
+    pub fn namespace(&self) -> &str {
+        &self.namespace[..]
+    }
+}
+
+impl fmt::Display for Var {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "#'{}/{}", self.namespace(), self.name())
+    }
 }
 
 #[derive(Debug, Clone)]

@@ -185,7 +185,6 @@ impl Parser {
                 lexeme => Ok(self.submit(n::Node::Symbol(n::SymbolNode::from(lexeme)))),
             },
             Kind::Number => {
-                println!("found number");
                 let number: f64 = (&token.lexeme[..]).parse().expect("Failed to parse number");
                 Ok(self.submit(n::Node::Number(n::NumberNode(number))))
             }

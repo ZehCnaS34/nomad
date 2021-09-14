@@ -31,7 +31,6 @@ mod namespace {
         }
 
         pub fn get(&self, name: &Symbol) -> Value {
-            println!("symbol {:?}", name);
             self.bindings
                 .get(name)
                 .cloned()
@@ -237,6 +236,8 @@ impl Context {
     }
 
     pub fn resolve(&self, name: &Symbol) -> Value {
-        self.using_namespace(|namespace| namespace.get(name))
+        self.using_namespace(|namespace| {
+            namespace.get(name)
+        })
     }
 }

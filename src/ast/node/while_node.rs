@@ -1,7 +1,7 @@
 use crate::{
     ast::{node, node::Node, Tag, TagIter, CHILD_LIMIT},
     copy,
-    interpreter::{Interpreter, Introspection},
+    interpreter::Interpreter,
 };
 use std::fmt;
 
