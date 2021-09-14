@@ -1,28 +1,7 @@
-"hello"
-;; factorial
+(def fact
+  (fn [n]
+    (if (= n 1)
+      n
+      (* n (fact (- n 1))))))
 
-(def param 10)
-(def product param)
-
-(
-    while (< 1 param)
-
-    , simple
-    (def awesome "name")
-
-    ;; (
-    ;;     println
-    ;;     "param: " param
-    ;;     "product: " product
-    ;; )
-
-    (
-        if (= 5 param)
-        (println param product)
-    )
-
-    (def param (- param 1))
-    (def product (* product param))
-)
-
-product
+(println (fact 10))

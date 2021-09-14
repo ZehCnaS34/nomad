@@ -1,17 +1,3 @@
-(let name "alex")
-(println name)
-{
-    (let name "raul")
-    (println name, age)
-    {
-        (let name "sanchez")
-        (println name)
-    }
-    (println name)
-}
-(println name)
-{
-    (println "Hello, World")
-}
+;; this is something simple.
 
-simple.name/is.simple
+(println 1 2 3 4 1231 123 123 123 123 1238 83712 049817234 0912874 1029387 1230947 1234)

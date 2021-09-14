@@ -439,9 +439,13 @@ mod execution {
                     }
                     NativeFunction::Mod => {
                         let mut arguments = self.arguments().into_iter();
-                        let left = arguments.next().expect("Mod takes 2 arguments. None supplied");
+                        let left = arguments
+                            .next()
+                            .expect("Mod takes 2 arguments. None supplied");
                         let left = interpreter.interpret_and_resolve_tag(left);
-                        let right = arguments.next().expect("Mod takes 2 arguments. One supplied");
+                        let right = arguments
+                            .next()
+                            .expect("Mod takes 2 arguments. One supplied");
                         let right = interpreter.interpret_and_resolve_tag(right);
                         interpreter.modulus(&left, &right)
                     }
