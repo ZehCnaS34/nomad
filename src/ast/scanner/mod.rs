@@ -18,11 +18,11 @@ fn is_quote(c: char) -> bool {
 }
 
 fn is_symbol_start(c: char) -> bool {
-    c.is_alphabetic() || "!$%^&*_-+=|<>?".contains(c)
+    c.is_alphabetic() || "!$%&*_-+=|<>?".contains(c)
 }
 
 fn is_symbol_char(c: char) -> bool {
-    c.is_alphabetic() || c.is_digit(10) || "!$%^&*_-+=|<>?".contains(c)
+    c.is_alphabetic() || c.is_digit(10) || "!$%&*_-+=|<>?".contains(c)
 }
 
 trait SymbolMatcher {
@@ -138,6 +138,27 @@ impl Scanner {
         self.make_token(kind)
     }
 
+    fn scan_keyword(&self) -> Option<Token> {
+        self.eat();
+        if self.check(|c| ':' == c) {
+            self.eat();
+        }
+        let name = || {
+            while self.is_symbol_char() {
+                self.eat();
+                if self.is_obj_delim() {
+                    self.eat();
+                }
+            }
+        };
+        name();
+        if self.is_ns_delim() {
+            self.eat();
+            name();
+        }
+        self.make_token(Kind::Symbol)
+    }
+
     fn scan_symbol(&self) -> Option<Token> {
         let name = || {
             while self.is_symbol_char() {
@@ -195,6 +216,18 @@ impl Scanner {
                     scanner.eat();
                     tokens.push(scanner.make_token(Kind::Symbol)?);
                 }
+                '^' => {
+                    scanner.eat();
+                    tokens.push(scanner.make_token(Kind::Carrot)?);
+                }
+                '\'' => {
+                    scanner.eat();
+                    tokens.push(scanner.make_token(Kind::Quote)?);
+                }
+                '#' => {
+                    scanner.eat();
+                    tokens.push(scanner.make_token(Kind::Hash)?);
+                }
                 ',' => {
                     scanner.ignore();
                 }
@@ -212,6 +245,7 @@ impl Scanner {
                 '{' => tokens.push(scanner.scan_delimiter(LeftBrace)?),
                 '}' => tokens.push(scanner.scan_delimiter(RightBracket)?),
                 '"' => tokens.push(scanner.scan_string()?),
+                ':' => tokens.push(scanner.scan_keyword()?),
                 c if is_symbol_start(c) => tokens.push(scanner.scan_symbol()?),
                 c if c.is_digit(10) => tokens.push(scanner.scan_number()?),
                 c => {

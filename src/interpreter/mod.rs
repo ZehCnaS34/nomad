@@ -36,6 +36,10 @@ impl Interpreter {
         let mut context = Context::new();
         context.new_namespace(Symbol::from("nomad.core"));
         context.define(
+            Symbol::from("now"),
+            Value::NativeFunction(NativeFunction::Now),
+        );
+        context.define(
             Symbol::from("<"),
             Value::NativeFunction(NativeFunction::LessThan),
         );
@@ -92,6 +96,14 @@ impl Interpreter {
         }
     }
 
+    fn sub(&self, lhs: &Value, rhs: &Value) -> Value {
+        use Value::Number;
+        match (lhs, rhs) {
+            (Number(l), Number(r)) => Number(l - r),
+            pair => panic!("add not defined {:?}", pair),
+        }
+    }
+
     pub fn dump_context(&self) {
         self.context.dump();
     }
@@ -118,7 +130,6 @@ impl Interpreter {
             .as_symbol()
             .and_then(|symbol| self.resolve(symbol).ok())
             .unwrap_or(value)
-            .show()
     }
 
     pub fn resolve(&self, symbol: &Symbol) -> RuntimeResult<Value> {
@@ -155,6 +166,7 @@ mod execution {
     use super::Interpreter;
     use crate::ast::node::*;
     use crate::ast::tag::*;
+    use std::time::{SystemTime, UNIX_EPOCH};
 
     pub trait Execute {
         fn execute(&self, interpreter: &Interpreter) -> Value;
@@ -180,7 +192,16 @@ mod execution {
                 Node::Symbol(node) => Value::Symbol(Symbol::from_node(node.clone())),
                 Node::Vector(node) => node.execute(interpreter),
                 Node::While(node) => node.execute(interpreter),
+                Node::Quote(node) => node.execute(interpreter),
+                Node::Meta(node) => node.execute(interpreter),
+                Node::Decorator(node) => node.execute(interpreter),
             }
+        }
+    }
+
+    impl Execute for DecoratorNode {
+        fn execute(&self, interpreter: &Interpreter) -> Value {
+            todo!("decoration nodes are not defined");
         }
     }
 
@@ -207,6 +228,18 @@ mod execution {
             } else {
                 interpreter.interpret_tag(self.false_branch)
             }
+        }
+    }
+
+    impl Execute for QuoteNode {
+        fn execute(&self, interpreter: &Interpreter) -> Value {
+            interpreter.interpret_tag(self.expression())
+        }
+    }
+
+    impl Execute for MetaNode {
+        fn execute(&self, interpreter: &Interpreter) -> Value {
+            todo!("meta data node not defined");
         }
     }
 
@@ -285,13 +318,19 @@ mod execution {
                             result
                         }
                         Value::NativeFunction(native) => match native {
+                            NativeFunction::Now => {
+                                let start = SystemTime::now();
+                                let since_the_epoch = start
+                                    .duration_since(UNIX_EPOCH)
+                                    .expect("time went backwards");
+                                Value::Number(since_the_epoch.as_millis() as f64)
+                            }
                             NativeFunction::Plus => {
                                 let mut arguments = self.arguments().into_iter();
                                 match arguments.len() {
                                     0 => Value::Number(0.0),
                                     1 => interpreter.interpret_tag(arguments.next().unwrap()),
                                     n => {
-                                        interpreter.dump_context();
                                         let mut base = interpreter.interpret_and_resolve_tag(
                                             arguments.next().expect("Name"),
                                         );
@@ -303,7 +342,23 @@ mod execution {
                                     }
                                 }
                             }
-                            NativeFunction::Minus => Value::Nil,
+                            NativeFunction::Minus => {
+                                let mut arguments = self.arguments().into_iter();
+                                match arguments.len() {
+                                    0 => Value::Number(0.0),
+                                    1 => interpreter.interpret_tag(arguments.next().unwrap()),
+                                    n => {
+                                        let mut base = interpreter.interpret_and_resolve_tag(
+                                            arguments.next().expect("Name"),
+                                        );
+                                        for tag in arguments {
+                                            let value = interpreter.interpret_and_resolve_tag(tag);
+                                            base = interpreter.sub(&base, &value);
+                                        }
+                                        base
+                                    }
+                                }
+                            },
                             NativeFunction::Print => {
                                 let mut arguments = self.arguments().into_iter();
                                 for (i, arg) in arguments.enumerate() {

@@ -37,6 +37,7 @@ pub enum NativeFunction {
     Println,
     LessThan,
     GreaterThan,
+    Now,
 }
 
 impl Value {

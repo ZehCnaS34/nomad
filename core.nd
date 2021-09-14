@@ -1,14 +1,7 @@
-(def max 100)
-(def inc (fn [v] (+ 1 v)))
+(def *ns* nil)
 
-(println (inc 0) "awesome")
+(set! *ns* 'nomad.core)
 
-(println 1 2 3 4 5)
+(def version #version "0.0.0")
 
-(println (< 1 2 (do (println "eval") 3)))
 
-(println max)
-
-(def max (inc max))
-
-(println max)

@@ -14,6 +14,9 @@ pub enum Kind {
     RightBracket,
     LeftBrace,
     RightBrace,
+    Carrot,
+    Quote,
+    Hash,
 }
 
 #[derive(Debug)]

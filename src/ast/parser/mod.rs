@@ -89,6 +89,9 @@ impl Parser {
             n::Node::While(..) => Tag::While(value),
             n::Node::Loop(..) => Tag::Loop(value),
             n::Node::Recur(..) => Tag::Recur(value),
+            n::Node::Meta(..) => Tag::Meta(value),
+            n::Node::Quote(..) => Tag::Quote(value),
+            n::Node::Decorator(..) => Tag::Decorator(value),
             node => panic!("node not yet implemented {:?}", node),
         };
         ast.insert(tag, node);
@@ -175,6 +178,23 @@ impl Parser {
         Ok(self.submit(n::Node::Vector(n::VectorNode::from_tags(&tags[..]))))
     }
 
+    fn quote(&self) -> Result<Tag> {
+        let expression = self.expression()?;
+        Ok(self.submit(n::Node::Quote(n::QuoteNode::from_tag(expression))))
+    }
+
+    fn carrot(&self) -> Result<Tag> {
+        let data = self.expression()?;
+        let target = self.expression()?;
+        Ok(self.submit(n::Node::Meta(n::MetaNode::from_tags(data, target))))
+    }
+
+    fn decorator(&self) -> Result<Tag> {
+        let mutator = self.expression()?;
+        let target = self.expression()?;
+        Ok(self.submit(n::Node::Decorator(n::DecoratorNode::from_tags(mutator, target))))
+    }
+
     fn expression(&self) -> Result<Tag> {
         let token = self.take()?;
         match token.kind {
@@ -192,6 +212,9 @@ impl Parser {
                 let lexeme = &token.lexeme[..];
                 Ok(self.submit(n::Node::String(n::StringNode::from(lexeme))))
             }
+            Kind::Carrot => self.carrot(),
+            Kind::Quote => self.quote(),
+            Kind::Hash => self.decorator(),
             Kind::LeftParen => self.nested(),
             Kind::LeftBracket => self.vector(),
             kind => {

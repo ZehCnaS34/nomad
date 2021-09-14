@@ -26,7 +26,7 @@ fn main() -> Result<(), MainResult> {
     let source = read_to_string(SOURCE_FILE).expect("Failed to read source file");
     let tokens = Scanner::scan(source).ok_or(MainResult)?;
     let ast = parse(tokens).unwrap();
-    // println!("{:#?}", ast);
-    interpreter::interpret(ast);
+    println!("{:#?}", ast);
+    // interpreter::interpret(ast);
     Ok(())
 }

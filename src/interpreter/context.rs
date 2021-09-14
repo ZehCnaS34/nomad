@@ -236,8 +236,6 @@ impl Context {
     }
 
     pub fn resolve(&self, name: &Symbol) -> Value {
-        self.using_namespace(|namespace| {
-            namespace.get(name)
-        })
+        self.using_namespace(|namespace| namespace.get(name))
     }
 }

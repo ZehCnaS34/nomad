@@ -12,6 +12,9 @@ pub enum Tag {
     Number(Id),
     String(Id),
     Symbol(Id),
+    Quote(Id),
+    Meta(Id),
+    Decorator(Id),
 
     // Defining bindings
     Definition(Id),
