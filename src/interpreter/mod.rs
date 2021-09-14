@@ -45,6 +45,10 @@ impl Interpreter {
         );
         context.define(Symbol::from("="), Value::NativeFunction(NativeFunction::Eq));
         context.define(
+            Symbol::from("mod"),
+            Value::NativeFunction(NativeFunction::Mod),
+        );
+        context.define(
             Symbol::from("<"),
             Value::NativeFunction(NativeFunction::LessThan),
         );
@@ -59,6 +63,10 @@ impl Interpreter {
         context.define(
             Symbol::from("*"),
             Value::NativeFunction(NativeFunction::Multiply),
+        );
+        context.define(
+            Symbol::from("/"),
+            Value::NativeFunction(NativeFunction::Divide),
         );
         context.define(
             Symbol::from("-"),
@@ -113,6 +121,14 @@ impl Interpreter {
         }
     }
 
+    fn modulus(&self, lhs: &Value, rhs: &Value) -> Value {
+        use Value::Number;
+        match (lhs, rhs) {
+            (Number(l), Number(r)) => Number(l % r),
+            pair => panic!("add not defined {:?}", pair),
+        }
+    }
+
     fn sub(&self, lhs: &Value, rhs: &Value) -> Value {
         use Value::Number;
         match (lhs, rhs) {
@@ -125,6 +141,14 @@ impl Interpreter {
         use Value::Number;
         match (lhs, rhs) {
             (Number(l), Number(r)) => Number(l * r),
+            pair => panic!("add not defined {:?}", pair),
+        }
+    }
+
+    fn div(&self, lhs: &Value, rhs: &Value) -> Value {
+        use Value::Number;
+        match (lhs, rhs) {
+            (Number(l), Number(r)) => Number(l / r),
             pair => panic!("add not defined {:?}", pair),
         }
     }
@@ -290,7 +314,7 @@ mod execution {
                 panic!("invalid identifier")
             }
             let ident = ident.take_symbol().expect("Ident should be a symbol");
-            let value = interpreter.interpret_tag(self.value());
+            let value = interpreter.interpret_and_resolve_tag(self.value());
             interpreter.define(ident, value)
         }
     }
@@ -396,6 +420,30 @@ mod execution {
                             }
                         }
                     }
+                    NativeFunction::Divide => {
+                        let mut arguments = self.arguments().into_iter();
+                        match arguments.len() {
+                            0 => Value::Number(1.0),
+                            1 => interpreter.interpret_and_resolve_tag(arguments.next().unwrap()),
+                            n => {
+                                let mut base = interpreter
+                                    .interpret_and_resolve_tag(arguments.next().expect("Name"));
+                                for tag in arguments {
+                                    let value = interpreter.interpret_and_resolve_tag(tag);
+                                    base = interpreter.div(&base, &value);
+                                }
+                                base
+                            }
+                        }
+                    }
+                    NativeFunction::Mod => {
+                        let mut arguments = self.arguments().into_iter();
+                        let left = arguments.next().expect("Mod takes 2 arguments. None supplied");
+                        let left = interpreter.interpret_and_resolve_tag(left);
+                        let right = arguments.next().expect("Mod takes 2 arguments. One supplied");
+                        let right = interpreter.interpret_and_resolve_tag(right);
+                        interpreter.modulus(&left, &right)
+                    }
                     NativeFunction::DumpContext => {
                         interpreter.dump_context();
                         Value::Nil
@@ -466,7 +514,10 @@ mod execution {
                         let mut flag = true;
                         let mut last: Option<Value> = None;
                         for arg in arguments {
+                            let literal = interpreter.interpret_tag(arg);
                             let value = interpreter.interpret_and_resolve_tag(arg);
+                            // println!("{:?}\n{:?}\n{:?}", arg, literal, value);
+                            // println!("-------------");
                             if let Some(l) = &last {
                                 if interpreter.gt(&l, &value).is_truthy() {
                                     last = Some(value);

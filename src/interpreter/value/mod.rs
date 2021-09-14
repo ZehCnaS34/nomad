@@ -35,10 +35,12 @@ pub enum NativeFunction {
     Minus,
     Multiply,
     DumpContext,
+    Divide,
     Eq,
     Print,
     Println,
     LessThan,
+    Mod,
     GreaterThan,
     Now,
 }
