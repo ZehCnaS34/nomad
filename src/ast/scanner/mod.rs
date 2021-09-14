@@ -197,8 +197,20 @@ impl Scanner {
 
     fn scan_string(&self) -> Option<Token> {
         self.eat();
-        while self.check_not(is_quote) {
-            self.eat();
+        loop {
+            let c = self.peek()?;
+            match c {
+                '"' => {
+                    break;
+                }
+                '\\' => {
+                    self.eat();
+                    self.eat();
+                }
+                c => {
+                    self.eat();
+                }
+            }
         }
         self.eat();
         self.make_token(Kind::String)

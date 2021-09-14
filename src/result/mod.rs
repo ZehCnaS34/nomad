@@ -7,6 +7,10 @@ pub mod runtime {
     #[derive(Debug)]
     pub enum ErrorKind {
         NotDefined,
+        InvalidOperation,
+        NodeNotFound,
+        InvalidNode,
+        InvalidArgumentArrity
     }
 }
 
@@ -19,6 +23,7 @@ pub mod parser {
         IfMissingCondition,
         IfMissingTrueBranch,
         InvalidDefForm,
+        InvalidOperation,
     }
 }
 

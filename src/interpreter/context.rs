@@ -3,6 +3,7 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 mod namespace {
+    use prettytable::{Table, Row, Cell};
     use crate::interpreter::value::{Symbol, Value};
     use std::collections::HashMap;
 
@@ -24,6 +25,16 @@ mod namespace {
                 name,
                 bindings: HashMap::new(),
             }
+        }
+
+        pub fn dump(&self) {
+            let mut table = Table::new();
+            table.add_row(row![format!("[namespace::{}]", self.name), ""]);
+            table.add_row(row!["key", "value"]);
+            for (key, val) in self.bindings.iter() {
+                table.add_row(row![key.to_string(), val.to_string()]);
+            }
+            table.printstd();
         }
 
         pub fn bind(&mut self, name: Symbol, atom: Value) {
@@ -55,6 +66,9 @@ mod pointers {
             self.namespace = symbol;
         }
 
+        pub fn dump(&self) {
+        }
+
         pub fn new() -> Pointers {
             Pointers {
                 namespace: Symbol::from("nomad.core"),
@@ -64,6 +78,7 @@ mod pointers {
 }
 
 mod scope {
+    use prettytable::{Table, Row, Cell};
     use crate::interpreter::value::{Symbol, Value};
     use std::borrow::BorrowMut;
     use std::collections::HashMap;
@@ -92,6 +107,14 @@ mod scope {
                     parent: None,
                 })),
             }
+        }
+
+        pub fn len(&self) -> usize {
+            let mut output = 0;
+            for scope in self.iter() {
+                output += 1;
+            }
+            output
         }
 
         pub fn push(&mut self) {
@@ -127,6 +150,19 @@ mod scope {
                 }
             }
             None
+        }
+
+        pub fn dump(&self) {
+            for (i, storage) in self.iter().enumerate() {
+                let storage = storage.lock().expect("Failed to lock");
+                let mut table = Table::new();
+                table.add_row(row![format!("[SCOPE::{}]", i), ""]);
+                table.add_row(row!["key", "value"]);
+                for (key, val) in storage.iter() {
+                    table.add_row(row![key.to_string(), val.to_string()]);
+                }
+                table.printstd();
+            }
         }
 
         fn iter(&self) -> Iter<'_> {
@@ -169,9 +205,11 @@ impl Context {
         let nss = self.namespaces.lock().expect("Could not namespaces");
         let ptrs = self.pointers.lock().expect("Could not lock pointers");
         let scope = self.scope.lock().expect("could not lock scope");
-        println!("{:#?}", nss);
-        println!("{:#?}", ptrs);
-        println!("{:#?}", scope);
+        for (_, ns) in nss.iter() {
+            ns.dump();
+        }
+        ptrs.dump();
+        scope.dump();
     }
 
     fn using_namespace<F, Return>(&self, f: F) -> Return
@@ -218,6 +256,11 @@ impl Context {
     pub fn push_scope(&self) {
         let mut scope = self.scope.lock().expect("Failed to lock scope");
         scope.push();
+    }
+
+    pub fn scope_depth(&self) -> usize {
+        let mut scope = self.scope.lock().expect("Failed to lock scope");
+        scope.len()
     }
 
     pub fn pop_scope(&self) {

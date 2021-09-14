@@ -1,5 +1,6 @@
 #![allow(warnings, unused)]
-
+#[macro_use]
+extern crate prettytable;
 #[macro_use]
 pub mod ast;
 pub mod interpreter;
@@ -13,10 +14,6 @@ use std::fs::read_to_string;
 use std::io;
 use std::str::FromStr;
 
-// const SOURCE_FILE: &'static str = "./collatz.nd";
-const SOURCE_FILE: &'static str = "./core.nd";
-// const SOURCE_FILE: &'static str = "./init.el";
-
 struct Environment {}
 
 #[derive(Debug)]
@@ -24,14 +21,20 @@ struct MainResult;
 
 fn run_repl() {}
 
-fn run_file() {}
-
-fn main() {
-    let file = cli::start();
+fn run_file(file: String) {
     let source = read_to_string(file).expect("Failed to read source file");
     let tokens = Scanner::scan(source).expect("Failed to tokenize file");
     let ast = parse(tokens).expect("Failed to parse AST");
-    interpreter::interpret(ast);
+    let mut interpreter = interpreter::Interpreter::new();
+    match interpreter.eval(ast) {
+        Ok(result) => println!("{:?}", result),
+        Err(err) => println!("failure {:?}", err),
+    }
+}
+
+fn main() {
+    let file = cli::start();
+    run_file(file);
 }
 
 mod cli {

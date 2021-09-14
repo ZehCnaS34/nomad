@@ -36,6 +36,7 @@ pub enum NativeFunction {
     Multiply,
     DumpContext,
     Divide,
+    Or,
     Eq,
     Print,
     Println,
@@ -51,7 +52,7 @@ impl Value {
         return self;
     }
 
-    pub fn is_valid_identifier(&self) -> bool {
+    pub fn is_local_identifier(&self) -> bool {
         self.as_symbol()
             .map(|symbol| !symbol.is_qualified())
             .unwrap_or(false)

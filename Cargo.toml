@@ -8,3 +8,5 @@ edition = "2018"
 [dependencies]
 im = "15.0.0"
 clap = "2.33.3"
+prettytable-rs = "^0.8"
+
