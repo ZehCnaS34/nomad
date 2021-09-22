@@ -34,7 +34,23 @@ impl Execute for Node {
             Node::Symbol(node) => Ok(Value::Symbol(Symbol::from_node(node.clone()))),
             Node::Vector(node) => node.execute(interpreter),
             Node::While(node) => node.execute(interpreter),
+            Node::Macro(node) => node.execute(interpreter),
+            Node::QuasiQuote(node) => node.execute(interpreter),
         }
+    }
+}
+
+impl Execute for QuasiQuoteNode {
+    fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
+        println!("{:#?}", self);
+        todo!()
+    }
+}
+
+impl Execute for MacroNode {
+    fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
+        println!("{:#?}", self);
+        todo!()
     }
 }
 
@@ -132,7 +148,12 @@ impl Execute for FunctionCallNode {
                     let vector = node.take_vector().ok_or(ErrorKind::InvalidNode)?;
                     let mut parameters = vec![];
                     for tag in vector.items() {
-                        parameters.push(interpreter.interpret_tag(tag)?.take_symbol().ok_or(ErrorKind::InvalidNode)?);
+                        parameters.push(
+                            interpreter
+                                .interpret_tag(tag)?
+                                .take_symbol()
+                                .ok_or(ErrorKind::InvalidNode)?,
+                        );
                     }
                     parameters.into_iter()
                 };
@@ -295,7 +316,7 @@ impl Execute for FunctionCallNode {
                     for arg in arguments {
                         let value = interpreter.interpret_and_resolve_tag(arg)?;
                         if value.is_truthy() {
-                            return Ok(value)
+                            return Ok(value);
                         }
                     }
                     Ok(Value::Nil)
@@ -320,7 +341,7 @@ impl Execute for FunctionCallNode {
                     Ok(Value::Boolean(flag))
                 }
                 NativeFunction::GreaterThan => {
-                    let mut arguments = self.arguments().into_iter();
+                    let arguments = self.arguments().into_iter();
                     let mut flag = true;
                     let mut last: Option<Value> = None;
                     for arg in arguments {

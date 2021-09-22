@@ -228,6 +228,14 @@ impl Scanner {
                     scanner.eat();
                     tokens.push(scanner.make_token(Kind::Symbol)?);
                 }
+                '`' => {
+                    scanner.eat();
+                    tokens.push(scanner.make_token(Kind::BackTick)?);
+                }
+                '~' => {
+                    scanner.eat();
+                    tokens.push(scanner.make_token(Kind::Unquote)?);
+                }
                 '^' => {
                     scanner.eat();
                     tokens.push(scanner.make_token(Kind::Carrot)?);

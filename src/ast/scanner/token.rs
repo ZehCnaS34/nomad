@@ -14,6 +14,8 @@ pub enum Kind {
     RightBracket,
     LeftBrace,
     RightBrace,
+    BackTick,
+    Unquote,
     Carrot,
     Quote,
     Hash,

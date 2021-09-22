@@ -1,10 +1,12 @@
-#![allow(warnings, unused)]
+// #[macro_use]
+// extern crate vulkano_shaders;
 #[macro_use]
 extern crate prettytable;
 #[macro_use]
 pub mod ast;
 pub mod interpreter;
 pub mod result;
+// pub mod win;
 
 use crate::ast::parser;
 use crate::ast::parser::parse;
@@ -21,6 +23,15 @@ struct MainResult;
 
 fn run_repl() {}
 
+macro_rules! take {
+    ($value:expr) => {
+        match $value {
+            Some(value) => Some(value),
+            None => return None,
+        }
+    }
+}
+
 fn run_file(file: String) {
     let source = read_to_string(file).expect("Failed to read source file");
     let tokens = Scanner::scan(source).expect("Failed to tokenize file");
@@ -33,6 +44,7 @@ fn run_file(file: String) {
 }
 
 fn main() {
+    // win::main();
     let file = cli::start();
     run_file(file);
 }

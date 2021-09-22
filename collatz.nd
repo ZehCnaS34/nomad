@@ -12,14 +12,14 @@
   (fn [iterations]
     (println "collatz")))
 
-; (while (> iterations 0)
-;   (def param iterations)
-;   (def steps 0)
-;   (while (> param 1)
-;     (def steps (+ steps 1))
-;     (def param (next-number param)))
-;   (println iterations "," steps)
-;   (def iterations (- iterations 1)))
+(while (> iterations 0)
+  (def param iterations)
+  (def steps 0)
+  (while (> param 1)
+    (def steps (+ steps 1))
+    (def param (next-number param)))
+  (println iterations "," steps)
+  (def iterations (- iterations 1)))
 
 
 (collatz)

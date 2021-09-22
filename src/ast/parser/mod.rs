@@ -12,6 +12,7 @@ use super::node as n;
 use super::scanner::token::{Kind, Token};
 use super::CHILD_LIMIT;
 use super::{Id, Tag};
+use crate::ast::node::QuoteNode;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum Form {
@@ -27,6 +28,7 @@ enum Form {
     Fn,
     Loop,
     Recur,
+    QuasiQuote,
 }
 
 #[derive(Debug)]
@@ -57,6 +59,7 @@ impl AST {
     }
 }
 
+#[derive(Debug)]
 pub struct Parser {
     ast: Mutex<AST>,
     position: Cell<usize>,
@@ -68,6 +71,11 @@ impl Parser {
     fn eof(&self) -> bool {
         let position = self.position.get();
         position >= self.tokens.len() || self.tokens[position].kind == Kind::Eof
+    }
+
+    pub fn get_node(&self, tag: Tag) -> Option<n::Node> {
+        let ast = self.ast.lock().ok()?;
+        ast.get(&tag).cloned()
     }
 
     #[inline]
@@ -94,6 +102,8 @@ impl Parser {
             n::Node::Quote(..) => Tag::Quote(value),
             n::Node::Decorator(..) => Tag::Decorator(value),
             n::Node::Let(..) => Tag::Let(value),
+            n::Node::Macro(..) => Tag::Macro(value),
+            n::Node::QuasiQuote(..) => Tag::QuasiQuote(value),
             node => panic!("node not yet implemented {:?}", node),
         };
         ast.insert(tag, node);
@@ -130,6 +140,7 @@ impl Parser {
                     "do" if !symbol.is_qualified() => Form::Do,
                     "fn" if !symbol.is_qualified() => Form::Fn,
                     "let*" if !symbol.is_qualified() => Form::Let,
+                    "defmacro" if !symbol.is_qualified() => Form::Macro,
                     _ => Form::Call,
                 }
             } else {
@@ -173,6 +184,7 @@ impl Parser {
             Form::Loop => self.submit(n::Node::Loop(n::LoopNode::from_tags(&tags[1..]))),
             Form::Recur => self.submit(n::Node::Recur(n::RecurNode::from_tags(&tags[1..]))),
             Form::Let => self.submit(n::Node::Let(n::LetNode::from_tags(&tags[1..]))),
+            Form::Macro => self.submit(n::Node::Macro(n::MacroNode::from_tags(self, tags.into()))),
             form => panic!("form {:?} not yet implemented", form),
         })
     }
@@ -180,6 +192,16 @@ impl Parser {
     fn vector(&self) -> Result<Tag> {
         let mut tags = self.take_until(Kind::RightBracket)?;
         Ok(self.submit(n::Node::Vector(n::VectorNode::from_tags(&tags[..]))))
+    }
+
+    fn escape_list(&self) -> Result<Tag> {
+        let item = self.expression()?;
+        Ok(self.submit(n::Node::QuasiQuote(n::QuasiQuoteNode::from_tag(item))))
+    }
+
+    fn unquote(&self) -> Result<Tag> {
+        let tag = self.expression()?;
+        Ok(self.submit(n::Node::Quote(QuoteNode::from_tag(tag))))
     }
 
     fn quote(&self) -> Result<Tag> {
@@ -223,7 +245,10 @@ impl Parser {
             Kind::Hash => self.decorator(),
             Kind::LeftParen => self.nested(),
             Kind::LeftBracket => self.vector(),
+            Kind::BackTick => self.escape_list(),
+            Kind::Unquote => self.unquote(),
             kind => {
+                println!("{:#?}", self);
                 todo!("{:?}", kind);
             }
         }

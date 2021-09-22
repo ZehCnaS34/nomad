@@ -20,6 +20,8 @@ mod string_node;
 mod symbol_node;
 mod vector_node;
 mod while_node;
+mod macro_node;
+mod quasi_quote_node;
 
 pub use boolean_node::BooleanNode;
 pub use decorator_node::DecoratorNode;
@@ -33,9 +35,11 @@ pub use let_node::LetNode;
 pub use list_node::ListNode;
 pub use loop_node::LoopNode;
 pub use meta_node::MetaNode;
+pub use macro_node::MacroNode;
 pub use number_node::NumberNode;
 pub use program_node::ProgramNode;
 pub use quote_node::QuoteNode;
+pub use quasi_quote_node::QuasiQuoteNode;
 pub use recur_node::RecurNode;
 pub use string_node::StringNode;
 pub use symbol_node::SymbolNode;
@@ -63,7 +67,9 @@ pub enum Node {
     Recur(RecurNode),
     Loop(LoopNode),
     Quote(QuoteNode),
+    QuasiQuote(QuasiQuoteNode),
     Meta(MetaNode),
+    Macro(MacroNode),
     Decorator(DecoratorNode),
 }
 

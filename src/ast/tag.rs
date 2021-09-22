@@ -30,6 +30,8 @@ pub enum Tag {
     Let(Id),
     Loop(Id),
     Recur(Id),
+    Macro(Id),
+    QuasiQuote(Id),
 
     // Data
     Vector(Id),
@@ -71,6 +73,27 @@ impl Tag {
     pub fn on_symbol(&self) -> Option<&Tag> {
         match self {
             Tag::Symbol(_) => Some(self),
+            _ => None,
+        }
+    }
+
+    pub fn take_symbol(self) -> Option<Self> {
+        match self {
+            Tag::Symbol(_) => Some(self),
+            _ => None,
+        }
+    }
+
+    pub fn is_symbol(&self) -> bool {
+        match self {
+            Tag::Symbol(_) => true,
+            _ => false,
+        }
+    }
+
+    pub fn take_vector(self) -> Option<Self> {
+        match self {
+            Tag::Vector(_) => Some(self),
             _ => None,
         }
     }

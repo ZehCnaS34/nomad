@@ -21,7 +21,7 @@ impl StringNode {
                     '\\' => literal.push('\\'),
                     c => literal.push(c),
                 }
-                continue
+                continue;
             }
             if c == '\\' {
                 escape = true;
@@ -29,9 +29,7 @@ impl StringNode {
             }
             literal.push(c);
         }
-        StringNode {
-            literal,
-        }
+        StringNode { literal }
     }
 
     pub fn value(&self) -> &str {

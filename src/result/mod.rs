@@ -10,7 +10,7 @@ pub mod runtime {
         InvalidOperation,
         NodeNotFound,
         InvalidNode,
-        InvalidArgumentArrity
+        InvalidArgumentArrity,
     }
 }
 

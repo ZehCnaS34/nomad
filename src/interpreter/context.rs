@@ -3,8 +3,8 @@ use std::collections::HashMap;
 use std::sync::Mutex;
 
 mod namespace {
-    use prettytable::{Table, Row, Cell};
     use crate::interpreter::value::{Symbol, Value};
+    use prettytable::{Cell, Row, Table};
     use std::collections::HashMap;
 
     #[derive(Debug)]
@@ -66,8 +66,7 @@ mod pointers {
             self.namespace = symbol;
         }
 
-        pub fn dump(&self) {
-        }
+        pub fn dump(&self) {}
 
         pub fn new() -> Pointers {
             Pointers {
@@ -78,8 +77,8 @@ mod pointers {
 }
 
 mod scope {
-    use prettytable::{Table, Row, Cell};
     use crate::interpreter::value::{Symbol, Value};
+    use prettytable::{Cell, Row, Table};
     use std::borrow::BorrowMut;
     use std::collections::HashMap;
     use std::rc::Rc;

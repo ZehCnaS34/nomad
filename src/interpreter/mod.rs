@@ -102,7 +102,7 @@ impl Interpreter {
         use Value::{Boolean, Number};
         match (lhs, rhs) {
             (Number(l), Number(r)) => Ok(Boolean(l > r)),
-            pair => Err(ErrorKind::InvalidOperation)
+            pair => Err(ErrorKind::InvalidOperation),
         }
     }
 
@@ -111,7 +111,7 @@ impl Interpreter {
         match (lhs, rhs) {
             (Number(l), Number(r)) => Ok(Number(l + r)),
             (Value::String(l), Value::String(r)) => Ok(Value::String(format!("{}{}", l, r))),
-            pair => Err(ErrorKind::InvalidOperation)
+            pair => Err(ErrorKind::InvalidOperation),
         }
     }
 
@@ -119,7 +119,7 @@ impl Interpreter {
         use Value::Number;
         match (lhs, rhs) {
             (Number(l), Number(r)) => Ok(Number(l % r)),
-            pair => Err(ErrorKind::InvalidOperation)
+            pair => Err(ErrorKind::InvalidOperation),
         }
     }
 
@@ -127,7 +127,7 @@ impl Interpreter {
         use Value::Number;
         match (lhs, rhs) {
             (Number(l), Number(r)) => Ok(Number(l - r)),
-            pair => Err(ErrorKind::InvalidOperation)
+            pair => Err(ErrorKind::InvalidOperation),
         }
     }
 
@@ -135,7 +135,7 @@ impl Interpreter {
         use Value::Number;
         match (lhs, rhs) {
             (Number(l), Number(r)) => Ok(Number(l * r)),
-            pair => Err(ErrorKind::InvalidOperation)
+            pair => Err(ErrorKind::InvalidOperation),
         }
     }
 
