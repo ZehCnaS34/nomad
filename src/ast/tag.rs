@@ -45,6 +45,52 @@ pub struct TagIter<'a> {
     tags: &'a [Tag],
 }
 
+pub trait Partition {
+    type Item;
+    fn take_1(self) -> Option<(Self::Item, Vec<Self::Item>)>;
+    fn take_2(self) -> Option<(Self::Item, Self::Item, Vec<Self::Item>)>;
+    fn take_3(self) -> Option<(Self::Item, Self::Item, Self::Item, Vec<Self::Item>)>;
+    fn take_4(
+        self,
+    ) -> Option<(
+        Self::Item,
+        Self::Item,
+        Self::Item,
+        Self::Item,
+        Vec<Self::Item>,
+    )>;
+}
+
+impl Partition for Vec<Tag> {
+    type Item = Tag;
+    fn take_1(mut self) -> Option<(Tag, Vec<Tag>)> {
+        let mut tags = self.into_iter();
+        let one = tags.next()?;
+        Some((one, tags.collect()))
+    }
+    fn take_2(mut self) -> Option<(Tag, Tag, Vec<Tag>)> {
+        let mut tags = self.into_iter();
+        let one = tags.next()?;
+        let two = tags.next()?;
+        Some((one, two, tags.collect()))
+    }
+    fn take_3(mut self) -> Option<(Tag, Tag, Tag, Vec<Tag>)> {
+        let mut tags = self.into_iter();
+        let one = tags.next()?;
+        let two = tags.next()?;
+        let three = tags.next()?;
+        Some((one, two, three, tags.collect()))
+    }
+    fn take_4(mut self) -> Option<(Tag, Tag, Tag, Tag, Vec<Tag>)> {
+        let mut tags = self.into_iter();
+        let one = tags.next()?;
+        let two = tags.next()?;
+        let three = tags.next()?;
+        let four = tags.next()?;
+        Some((one, two, three, four, tags.collect()))
+    }
+}
+
 #[macro_export]
 macro_rules! take_tags {
     ( $tags:ident, $amount:literal ) => {};

@@ -1,22 +1,22 @@
 use super::Node;
+use crate::ast::node::ToNode;
 use crate::ast::Tag;
-use crate::ast::CHILD_LIMIT;
-use crate::copy;
 use crate::interpreter::Interpreter;
+use crate::result::parser::ErrorKind;
 
 #[derive(Debug, Clone)]
 pub struct VectorNode {
-    items: [Tag; CHILD_LIMIT.program],
+    items: Vec<Tag>,
 }
 
 impl VectorNode {
-    pub fn from_tags(tags: &[Tag]) -> Self {
-        VectorNode {
-            items: copy! { tags, 0, CHILD_LIMIT.program },
-        }
-    }
-
     pub fn items(&self) -> Vec<Tag> {
-        Tag::tags(&self.items[..]).collect()
+        self.items.iter().map(Clone::clone).collect()
+    }
+}
+
+impl ToNode for VectorNode {
+    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
+        Ok(Node::Vector(VectorNode { items: tags }))
     }
 }

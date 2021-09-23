@@ -1,21 +1,24 @@
-use crate::ast::CHILD_LIMIT;
+use crate::ast::node::{Node, ToNode};
+use crate::ast::tag::Partition;
 use crate::ast::{Tag, TagIter};
-use crate::copy;
 use crate::interpreter::Interpreter;
+use crate::result::parser::ErrorKind;
+use crate::result::parser::ErrorKind::General;
 
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug, Clone)]
 pub struct DoNode {
-    expressions: [Tag; CHILD_LIMIT.while_body],
+    expressions: Vec<Tag>,
 }
 
 impl DoNode {
-    pub fn from_tags(tags: &[Tag]) -> DoNode {
-        DoNode {
-            expressions: copy! { tags, 0, CHILD_LIMIT.while_body },
-        }
-    }
-
     pub fn expressions(&self) -> TagIter {
         Tag::tags(&self.expressions[..])
+    }
+}
+
+impl ToNode for DoNode {
+    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
+        let (_, expressions) = tags.take_1().ok_or(General("Failed"))?;
+        Ok(Node::Do(DoNode { expressions }))
     }
 }

@@ -4,6 +4,7 @@
 extern crate prettytable;
 #[macro_use]
 pub mod ast;
+mod ecs;
 pub mod interpreter;
 pub mod result;
 // pub mod win;
@@ -29,7 +30,7 @@ macro_rules! take {
             Some(value) => Some(value),
             None => return None,
         }
-    }
+    };
 }
 
 fn run_file(file: String) {

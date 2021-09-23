@@ -1,23 +1,24 @@
+use crate::result::parser;
 use crate::{
-    ast::{node, node::Node, Tag, TagIter, CHILD_LIMIT},
-    copy,
+    ast::{node, node::Node, node::ToNode, tag::Partition, Tag, TagIter},
     interpreter::Interpreter,
 };
 use std::fmt;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct WhileNode {
     condition: Tag,
-    body: [Tag; CHILD_LIMIT.while_body],
+    body: Vec<Tag>,
+}
+
+impl ToNode for WhileNode {
+    fn make_node(tags: Vec<Tag>) -> Result<Node, parser::ErrorKind> {
+        let (_, condition, body) = tags.take_2().ok_or(parser::ErrorKind::CouldNotParseAtom)?;
+        Ok(Node::While(WhileNode { condition, body }))
+    }
 }
 
 impl WhileNode {
-    pub fn from_tags(tags: &[Tag]) -> Self {
-        let condition = tags[0];
-        let body = copy! { tags, 1, CHILD_LIMIT.while_body };
-        WhileNode { condition, body }
-    }
-
     pub fn condition(&self) -> Tag {
         self.condition
     }

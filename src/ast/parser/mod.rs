@@ -9,8 +9,8 @@ use crate::result::parser::ErrorKind as Error;
 use crate::result::ParseResult as Result;
 
 use super::node as n;
+use super::node::ToNode;
 use super::scanner::token::{Kind, Token};
-use super::CHILD_LIMIT;
 use super::{Id, Tag};
 use crate::ast::node::QuoteNode;
 
@@ -79,8 +79,8 @@ impl Parser {
     }
 
     #[inline]
-    fn submit(&self, node: n::Node) -> Tag {
-        let mut ast = self.ast.lock().unwrap();
+    fn submit(&self, node: n::Node) -> Result<Tag> {
+        let mut ast = self.ast.lock().expect("Could not lock thread");
         let value = ast.len();
         let tag = match &node {
             n::Node::Nil => Tag::Nil(value),
@@ -104,10 +104,11 @@ impl Parser {
             n::Node::Let(..) => Tag::Let(value),
             n::Node::Macro(..) => Tag::Macro(value),
             n::Node::QuasiQuote(..) => Tag::QuasiQuote(value),
-            node => panic!("node not yet implemented {:?}", node),
+            n::Node::List(..) => todo!("list"),
+            n::Node::Keyword(..) => todo!("keyword"),
         };
         ast.insert(tag, node);
-        return tag;
+        return Ok(tag);
     }
 
     #[inline]
@@ -151,17 +152,15 @@ impl Parser {
         }
     }
 
-    fn take_until(&self, kind: Kind) -> Result<[Tag; 50]> {
-        let mut nodes = [Tag::Noop; 50];
-        let mut i = 0;
+    fn take_until(&self, kind: Kind) -> Result<Vec<Tag>> {
+        let mut nodes = Vec::new();
         loop {
             let token = self.peek().ok_or(Error::UnexpectedEof)?;
             if token.kind == kind || token.kind == Kind::Eof {
                 self.take();
                 break;
             }
-            nodes[i] = self.expression()?;
-            i += 1;
+            nodes.push(self.expression()?);
         }
         Ok(nodes)
     }
@@ -170,75 +169,75 @@ impl Parser {
         let mut tags = self.take_until(Kind::RightParen)?;
         let first = tags[0];
         // println!("tags {:?}", tags);
-        Ok(match self.special_form(first) {
-            Form::Call => self.submit(n::Node::FunctionCall(n::FunctionCallNode::from_tags(
-                &tags[..],
-            ))),
-            Form::While => self.submit(n::Node::While(n::WhileNode::from_tags(&tags[1..]))),
-            Form::If => self.submit(n::Node::If(n::IfNode::from_tags(&tags[1..]))),
-            Form::Def => self.submit(n::Node::Definition(n::DefinitionNode::from_tags(
-                &tags[1..],
-            ))),
-            Form::Do => self.submit(n::Node::Do(n::DoNode::from_tags(&tags[1..]))),
-            Form::Fn => self.submit(n::Node::Function(n::FunctionNode::from_tags(&tags[1..]))),
-            Form::Loop => self.submit(n::Node::Loop(n::LoopNode::from_tags(&tags[1..]))),
-            Form::Recur => self.submit(n::Node::Recur(n::RecurNode::from_tags(&tags[1..]))),
-            Form::Let => self.submit(n::Node::Let(n::LetNode::from_tags(&tags[1..]))),
-            Form::Macro => self.submit(n::Node::Macro(n::MacroNode::from_tags(self, tags.into()))),
-            form => panic!("form {:?} not yet implemented", form),
-        })
+
+        self.submit(match self.special_form(first) {
+            Form::Call => n::FunctionCallNode::make_node(tags),
+            Form::While => n::WhileNode::make_node(tags),
+            Form::If => n::IfNode::make_node(tags),
+            Form::Def => n::DefinitionNode::make_node(tags),
+            Form::Do => n::DoNode::make_node(tags),
+            Form::Fn => n::FunctionNode::make_node(tags),
+            Form::Loop => n::LoopNode::make_node(tags),
+            Form::Recur => n::RecurNode::make_node(tags),
+            Form::Let => n::LetNode::make_node(tags),
+            Form::Macro => todo!("Macro node not implemented"),
+            Form::Index => todo!("implement index"),
+            Form::Special => todo!("special form"),
+            Form::QuasiQuote => todo!("quasi quote"),
+        }?)
     }
 
     fn vector(&self) -> Result<Tag> {
-        let mut tags = self.take_until(Kind::RightBracket)?;
-        Ok(self.submit(n::Node::Vector(n::VectorNode::from_tags(&tags[..]))))
+        self.submit(n::VectorNode::make_node(
+            self.take_until(Kind::RightBracket)?,
+        )?)
     }
 
     fn escape_list(&self) -> Result<Tag> {
         let item = self.expression()?;
-        Ok(self.submit(n::Node::QuasiQuote(n::QuasiQuoteNode::from_tag(item))))
+        self.submit(n::Node::QuasiQuote(n::QuasiQuoteNode::from_tag(item)))
     }
 
     fn unquote(&self) -> Result<Tag> {
         let tag = self.expression()?;
-        Ok(self.submit(n::Node::Quote(QuoteNode::from_tag(tag))))
+        self.submit(n::Node::Quote(QuoteNode::from_tag(tag)))
     }
 
     fn quote(&self) -> Result<Tag> {
         let expression = self.expression()?;
-        Ok(self.submit(n::Node::Quote(n::QuoteNode::from_tag(expression))))
+        self.submit(n::Node::Quote(n::QuoteNode::from_tag(expression)))
     }
 
     fn carrot(&self) -> Result<Tag> {
-        let data = self.expression()?;
-        let target = self.expression()?;
-        Ok(self.submit(n::Node::Meta(n::MetaNode::from_tags(data, target))))
+        self.submit(n::MetaNode::make_node(vec![
+            self.expression()?,
+            self.expression()?,
+        ])?)
     }
 
     fn decorator(&self) -> Result<Tag> {
-        let mutator = self.expression()?;
-        let target = self.expression()?;
-        Ok(self.submit(n::Node::Decorator(n::DecoratorNode::from_tags(
-            mutator, target,
-        ))))
+        self.submit(n::DecoratorNode::make_node(vec![
+            self.expression()?,
+            self.expression()?,
+        ])?)
     }
 
     fn expression(&self) -> Result<Tag> {
         let token = self.take()?;
         match token.kind {
             Kind::Symbol => match &token.lexeme[..] {
-                "nil" => Ok(self.submit(n::Node::Nil)),
-                "true" => Ok(self.submit(n::Node::Boolean(n::BooleanNode(true)))),
-                "false" => Ok(self.submit(n::Node::Boolean(n::BooleanNode(false)))),
-                lexeme => Ok(self.submit(n::Node::Symbol(n::SymbolNode::from(lexeme)))),
+                "nil" => self.submit(n::Node::Nil),
+                "true" => self.submit(n::Node::Boolean(n::BooleanNode(true))),
+                "false" => self.submit(n::Node::Boolean(n::BooleanNode(false))),
+                lexeme => self.submit(n::Node::Symbol(n::SymbolNode::from(lexeme))),
             },
             Kind::Number => {
                 let number: f64 = (&token.lexeme[..]).parse().expect("Failed to parse number");
-                Ok(self.submit(n::Node::Number(n::NumberNode(number))))
+                self.submit(n::Node::Number(n::NumberNode(number)))
             }
             Kind::String => {
                 let lexeme = &token.lexeme[..];
-                Ok(self.submit(n::Node::String(n::StringNode::from(lexeme))))
+                self.submit(n::Node::String(n::StringNode::from(lexeme)))
             }
             Kind::Carrot => self.carrot(),
             Kind::Quote => self.quote(),
@@ -255,8 +254,7 @@ impl Parser {
     }
 
     fn program(&self) -> Result<Tag> {
-        let mut expressions = [Tag::Noop; CHILD_LIMIT.program];
-        let mut i = 0;
+        let mut expressions = Vec::new();
         while let Some(token) = self.peek() {
             match token.kind {
                 Kind::Comment => {
@@ -266,12 +264,11 @@ impl Parser {
                     break;
                 }
                 _kind => {
-                    expressions[i] = self.expression()?;
-                    i += 1;
+                    expressions.push(self.expression()?);
                 }
             }
         }
-        Ok(self.submit(n::Node::Program(n::ProgramNode::from(&expressions[..]))))
+        self.submit(n::ProgramNode::make_node(expressions)?)
     }
 }
 

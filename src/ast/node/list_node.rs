@@ -1,18 +1,19 @@
 use super::Node;
+use crate::ast::node::Node::List;
+use crate::ast::node::ToNode;
 use crate::ast::Tag;
-use crate::ast::CHILD_LIMIT;
-use crate::copy;
 use crate::interpreter::Interpreter;
+use crate::result::parser::ErrorKind;
 
 #[derive(Debug, Clone)]
 pub struct ListNode {
-    items: [Tag; CHILD_LIMIT.program],
+    items: Vec<Tag>,
 }
 
-impl ListNode {
-    pub fn from_tags(tags: &[Tag]) -> Self {
-        ListNode {
-            items: copy! { tags, 0, CHILD_LIMIT.program },
-        }
+impl ListNode {}
+
+impl ToNode for ListNode {
+    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
+        Ok(List(ListNode { items: tags }))
     }
 }

@@ -1,12 +1,12 @@
 use std::any::Any;
 use std::fmt;
 
+use crate::ast::node::{Node, ToNode};
+use crate::ast::tag::Partition;
 use crate::ast::TagIter;
-use crate::{
-    ast,
-    ast::{Tag, CHILD_LIMIT},
-    copy, take_tags,
-};
+use crate::result::parser;
+use crate::result::parser::ErrorKind::General;
+use crate::{ast, ast::Tag};
 
 trait Show {
     fn show(self) -> Self
@@ -17,21 +17,23 @@ trait Show {
 #[derive(Debug, Clone)]
 pub struct FunctionCallNode {
     function: Tag,
-    arguments: [Tag; CHILD_LIMIT.function_call],
+    arguments: Vec<Tag>,
+}
+
+impl ToNode for FunctionCallNode {
+    fn make_node(tags: Vec<Tag>) -> Result<Node, parser::ErrorKind> {
+        let mut tags = tags.into_iter();
+        Ok(Node::FunctionCall(FunctionCallNode {
+            function: tags.next().ok_or(parser::ErrorKind::CouldNotParseAtom)?,
+            arguments: tags.collect(),
+        }))
+    }
 }
 
 impl FunctionCallNode {
-    pub fn from_tags(tags: &[Tag]) -> FunctionCallNode {
-        FunctionCallNode {
-            function: tags[0],
-            arguments: copy! { tags, 1, CHILD_LIMIT.function_call },
-        }
-    }
-
     pub fn function(&self) -> Tag {
         self.function
     }
-
     pub fn arguments(&self) -> Vec<Tag> {
         Tag::tags(&self.arguments[..]).collect()
     }
@@ -42,12 +44,34 @@ pub enum FunctionNode {
     Named {
         name: Tag,
         parameters: Tag,
-        body: [Tag; CHILD_LIMIT.while_body],
+        body: Vec<Tag>,
     },
     Anonymous {
         parameters: Tag,
-        body: [Tag; CHILD_LIMIT.while_body],
+        body: Vec<Tag>,
     },
+}
+
+impl ToNode for FunctionNode {
+    fn make_node(tags: Vec<Tag>) -> Result<Node, parser::ErrorKind> {
+        let (_, name_or_args, args_or_first, mut body) = tags.take_3().ok_or(General("Failed"))?;
+        let function = if name_or_args.is_symbol() {
+            FunctionNode::Named {
+                name: name_or_args,
+                parameters: args_or_first,
+                body,
+            }
+        } else {
+            FunctionNode::Anonymous {
+                parameters: name_or_args,
+                body: {
+                    body.insert(0, args_or_first);
+                    body
+                },
+            }
+        };
+        Ok(Node::Function(function))
+    }
 }
 
 impl FunctionNode {
@@ -70,23 +94,6 @@ impl FunctionNode {
         match self {
             FunctionNode::Anonymous { .. } => None,
             FunctionNode::Named { name, .. } => Some(*name),
-        }
-    }
-
-    pub fn from_tags(tags: &[Tag]) -> FunctionNode {
-        if tags[0].is_atom() {
-            FunctionNode::Named {
-                name: tags[0],
-                parameters: tags[1],
-                body: copy! { tags, 2, CHILD_LIMIT.while_body },
-            }
-        } else if tags[0].is_vector() {
-            FunctionNode::Anonymous {
-                parameters: tags[0],
-                body: copy! { tags, 1, CHILD_LIMIT.while_body },
-            }
-        } else {
-            panic!("Function definitions must start is either a identity or")
         }
     }
 }

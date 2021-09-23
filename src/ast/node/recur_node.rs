@@ -1,19 +1,21 @@
-use crate::ast::node::Node;
+use crate::ast::node::{Node, ToNode};
+use crate::ast::tag::Partition;
 use crate::ast::Tag;
-use crate::ast::CHILD_LIMIT;
-use crate::copy;
 use crate::interpreter::Interpreter;
+use crate::result::parser::ErrorKind;
+use crate::result::parser::ErrorKind::General;
 use std::fmt;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct RecurNode {
-    pub bindings: [Tag; CHILD_LIMIT.function_call],
+    pub bindings: Vec<Tag>,
 }
 
-impl RecurNode {
-    pub fn from_tags(tags: &[Tag]) -> Self {
-        RecurNode {
-            bindings: copy! { tags, 0, CHILD_LIMIT.function_call },
-        }
+impl RecurNode {}
+
+impl ToNode for RecurNode {
+    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
+        let (_, bindings) = tags.take_1().ok_or(General("Failed"))?;
+        Ok(Node::Recur(RecurNode { bindings }))
     }
 }

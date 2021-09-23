@@ -1,21 +1,22 @@
-use crate::ast::node::Node;
+use crate::ast::node::{Node, ToNode};
+use crate::ast::tag::Partition;
 use crate::ast::Tag;
-use crate::ast::CHILD_LIMIT;
-use crate::copy;
 use crate::interpreter::Interpreter;
+use crate::result::parser::ErrorKind;
+use crate::result::parser::ErrorKind::General;
 use std::fmt;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct LoopNode {
     pub bindings: Tag,
-    pub body: [Tag; CHILD_LIMIT.while_body],
+    pub body: Vec<Tag>,
 }
 
-impl LoopNode {
-    pub fn from_tags(tags: &[Tag]) -> Self {
-        LoopNode {
-            bindings: tags[0],
-            body: copy! { tags, 1, CHILD_LIMIT.while_body },
-        }
+impl LoopNode {}
+
+impl ToNode for LoopNode {
+    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
+        let (_, bindings, body) = tags.take_2().ok_or(General("Awesome"))?;
+        Ok(Node::Loop(LoopNode { bindings, body }))
     }
 }

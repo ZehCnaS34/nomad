@@ -8,19 +8,10 @@
       n
       (* n (fact (dec n))))))
 
-
 (println (fact 10))
 
 (println "alex")
 
 (println "alexander \"xela\" sanchez")
 
-(defn -or [body]
-  (let [head (first body)
-        tail (rest body)]
-    `(let [head# ~head]
-       (if head# head# ~(-or tail))
-       )))
-
-(defmacro or [& body]
-    (-or body))
+name.age.wow/*core*
