@@ -1,6 +1,6 @@
 use crate::ast::node::{Node, ToNode};
 use crate::ast::tag::Partition;
-use crate::ast::{Tag, TagIter};
+use crate::ast::Tag;
 use crate::interpreter::Interpreter;
 use crate::result::parser::ErrorKind;
 use crate::result::parser::ErrorKind::General;
@@ -11,8 +11,8 @@ pub struct DoNode {
 }
 
 impl DoNode {
-    pub fn expressions(&self) -> TagIter {
-        Tag::tags(&self.expressions[..])
+    pub fn expressions(&self) -> Vec<Tag> {
+        self.expressions.iter().map(Clone::clone).collect()
     }
 }
 

@@ -2,47 +2,51 @@ pub type Id = usize;
 pub type Ids = Vec<Id>;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
-pub enum Tag {
-    // Throw away
-    Noop,
-
+pub enum TagKind {
     // Base case
-    Nil(Id),
-    Boolean(Id),
-    Number(Id),
-    String(Id),
-    Symbol(Id),
-    Quote(Id),
-    Meta(Id),
-    Decorator(Id),
+    Nil,
+    Boolean,
+    Number,
+    String,
+    Symbol,
+    Quote,
+    Meta,
+    Decorator,
 
     // Defining bindings
-    Definition(Id),
+    Definition,
 
     // Function
-    Call(Id),
-    Function(Id),
+    Call,
+    Function,
 
     // Control flow
-    Do(Id),
-    If(Id),
-    While(Id),
-    Let(Id),
-    Loop(Id),
-    Recur(Id),
-    Macro(Id),
-    QuasiQuote(Id),
+    Do,
+    If,
+    While,
+    Let,
+    Loop,
+    Recur,
+    Macro,
+    QuasiQuote,
 
     // Data
-    Vector(Id),
+    Vector,
 
     // Entry
-    Program(Id),
+    Program,
 }
 
-pub struct TagIter<'a> {
-    current: usize,
-    tags: &'a [Tag],
+impl TagKind {
+    pub fn reify(self, id: Id) -> Tag {
+        Tag { kind: self, id }
+    }
+}
+
+#[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
+pub struct Tag {
+    kind: TagKind,
+    id: Id,
 }
 
 pub trait Partition {
@@ -61,27 +65,27 @@ pub trait Partition {
     )>;
 }
 
-impl Partition for Vec<Tag> {
-    type Item = Tag;
-    fn take_1(mut self) -> Option<(Tag, Vec<Tag>)> {
+impl<T> Partition for Vec<T> {
+    type Item = T;
+    fn take_1(mut self) -> Option<(T, Vec<T>)> {
         let mut tags = self.into_iter();
         let one = tags.next()?;
         Some((one, tags.collect()))
     }
-    fn take_2(mut self) -> Option<(Tag, Tag, Vec<Tag>)> {
+    fn take_2(mut self) -> Option<(T, T, Vec<T>)> {
         let mut tags = self.into_iter();
         let one = tags.next()?;
         let two = tags.next()?;
         Some((one, two, tags.collect()))
     }
-    fn take_3(mut self) -> Option<(Tag, Tag, Tag, Vec<Tag>)> {
+    fn take_3(mut self) -> Option<(T, T, T, Vec<T>)> {
         let mut tags = self.into_iter();
         let one = tags.next()?;
         let two = tags.next()?;
         let three = tags.next()?;
         Some((one, two, three, tags.collect()))
     }
-    fn take_4(mut self) -> Option<(Tag, Tag, Tag, Tag, Vec<Tag>)> {
+    fn take_4(mut self) -> Option<(T, T, T, T, Vec<T>)> {
         let mut tags = self.into_iter();
         let one = tags.next()?;
         let two = tags.next()?;
@@ -91,83 +95,50 @@ impl Partition for Vec<Tag> {
     }
 }
 
-#[macro_export]
-macro_rules! take_tags {
-    ( $tags:ident, $amount:literal ) => {};
-}
-
 impl Tag {
-    pub fn tags(tags: &[Tag]) -> TagIter {
-        TagIter { tags, current: 0 }
-    }
-
-    pub fn len(tags: &[Tag]) -> usize {
-        let mut i = 0;
-        for _ in Tag::tags(tags) {
-            i += 1;
-        }
-        return i;
-    }
-
     pub fn is_vector(&self) -> bool {
-        match self {
-            Tag::Vector(_) => true,
+        match self.kind {
+            TagKind::Vector => true,
             _ => false,
         }
     }
 
     pub fn on_symbol(&self) -> Option<&Tag> {
-        match self {
-            Tag::Symbol(_) => Some(self),
+        match self.kind {
+            TagKind::Symbol => Some(self),
             _ => None,
         }
     }
 
     pub fn take_symbol(self) -> Option<Self> {
-        match self {
-            Tag::Symbol(_) => Some(self),
+        match self.kind {
+            TagKind::Symbol => Some(self),
             _ => None,
         }
     }
 
     pub fn is_symbol(&self) -> bool {
-        match self {
-            Tag::Symbol(_) => true,
+        match self.kind {
+            TagKind::Symbol => true,
             _ => false,
         }
     }
 
     pub fn take_vector(self) -> Option<Self> {
-        match self {
-            Tag::Vector(_) => Some(self),
+        match self.kind {
+            TagKind::Vector => Some(self),
             _ => None,
         }
     }
 
     pub fn is_atom(&self) -> bool {
-        match self {
-            Tag::Nil(_) => true,
-            Tag::Boolean(_) => true,
-            Tag::Number(_) => true,
-            Tag::String(_) => true,
-            Tag::Symbol(_) => true,
+        match self.kind {
+            TagKind::Nil => true,
+            TagKind::Boolean => true,
+            TagKind::Number => true,
+            TagKind::String => true,
+            TagKind::Symbol => true,
             _ => false,
         }
-    }
-}
-
-impl<'a> Iterator for TagIter<'a> {
-    type Item = Tag;
-
-    fn next(&mut self) -> Option<Self::Item> {
-        if self.current >= self.tags.len() {
-            return None;
-        }
-        let tag = self.tags[self.current];
-        if tag == Tag::Noop {
-            return None;
-        }
-        self.current += 1;
-        Some(tag)
     }
 }

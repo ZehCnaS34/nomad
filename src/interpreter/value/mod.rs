@@ -14,6 +14,38 @@ pub enum Value {
     NativeFunction(NativeFunction),
 }
 
+pub const NIL: Value = Value::Nil;
+
+impl From<(&'static str, &'static str)> for Value {
+    fn from((ns, n): (&'static str, &'static str)) -> Self {
+        Value::Symbol(Symbol {
+            name: n.into(),
+            namespace: Some(ns.into())
+        })
+    }
+}
+
+impl From<(&'static str)> for Value {
+    fn from((n): &'static str) -> Self {
+        Value::Symbol(Symbol {
+            name: n.into(),
+            namespace: None,
+        })
+    }
+}
+
+impl From<i64> for Value {
+    fn from(v: i64) -> Self {
+        Value::Number(v as f64)
+    }
+}
+
+impl From<f64> for Value {
+    fn from(v: f64) -> Self {
+        Value::Number(v)
+    }
+}
+
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {

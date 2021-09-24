@@ -6,8 +6,8 @@ use crate::result::parser::ErrorKind::General;
 
 #[derive(Debug, Clone)]
 pub struct DecoratorNode {
-    mutator: Tag,
-    target: Tag,
+    pub mutator: Tag,
+    pub target: Tag,
 }
 
 impl DecoratorNode {}

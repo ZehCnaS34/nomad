@@ -1,6 +1,6 @@
 use crate::result::parser;
 use crate::{
-    ast::{node, node::Node, node::ToNode, tag::Partition, Tag, TagIter},
+    ast::{node, node::Node, node::ToNode, tag::Partition, Tag},
     interpreter::Interpreter,
 };
 use std::fmt;
@@ -23,7 +23,7 @@ impl WhileNode {
         self.condition
     }
 
-    pub fn body(&self) -> TagIter {
-        Tag::tags(&self.body[..])
+    pub fn body(&self) -> Vec<Tag> {
+        self.body.iter().map(Clone::clone).collect()
     }
 }

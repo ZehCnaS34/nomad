@@ -75,6 +75,10 @@ impl Interpreter {
             Symbol::from("println"),
             Value::NativeFunction(NativeFunction::Println),
         );
+        context.define(
+            Symbol::from("*version*"),
+            0.into(),
+        );
         Interpreter {
             ast: None,
             context,

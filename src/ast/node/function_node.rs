@@ -3,7 +3,6 @@ use std::fmt;
 
 use crate::ast::node::{Node, ToNode};
 use crate::ast::tag::Partition;
-use crate::ast::TagIter;
 use crate::result::parser;
 use crate::result::parser::ErrorKind::General;
 use crate::{ast, ast::Tag};
@@ -35,7 +34,7 @@ impl FunctionCallNode {
         self.function
     }
     pub fn arguments(&self) -> Vec<Tag> {
-        Tag::tags(&self.arguments[..]).collect()
+        self.arguments.iter().map(Clone::clone).collect()
     }
 }
 
@@ -83,10 +82,12 @@ impl FunctionNode {
     }
 
     pub fn body(&self) -> Vec<Tag> {
-        Tag::tags(match self {
+        match self {
             FunctionNode::Anonymous { body, .. } => body,
             FunctionNode::Named { body, .. } => body,
-        })
+        }
+        .iter()
+        .map(Clone::clone)
         .collect()
     }
 

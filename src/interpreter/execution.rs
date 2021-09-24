@@ -192,8 +192,6 @@ impl Execute for FunctionCallNode {
                         1 => interpreter.interpret_tag(arguments.next().unwrap()),
                         n => {
                             interpreter.context.push_scope();
-                            println!("push");
-                            interpreter.dump_context();
                             let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArrity)?;
                             let mut base = interpreter.interpret_and_resolve_tag(base)?;
                             for tag in arguments {

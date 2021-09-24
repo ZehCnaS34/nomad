@@ -1,5 +1,5 @@
 use crate::ast::node::{Node, ToNode};
-use crate::ast::{Tag, TagIter};
+use crate::ast::Tag;
 use crate::interpreter::Interpreter;
 use crate::result::parser::ErrorKind;
 
@@ -9,8 +9,8 @@ pub struct ProgramNode {
 }
 
 impl ProgramNode {
-    pub fn expressions(&self) -> TagIter {
-        Tag::tags(&self.expressions[..])
+    pub fn expressions(&self) -> Vec<Tag> {
+        self.expressions.iter().map(Clone::clone).collect()
     }
 }
 

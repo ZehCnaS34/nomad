@@ -13,6 +13,7 @@ use super::node::ToNode;
 use super::scanner::token::{Kind, Token};
 use super::{Id, Tag};
 use crate::ast::node::QuoteNode;
+use crate::ast::tag::TagKind;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum Form {
@@ -81,32 +82,32 @@ impl Parser {
     #[inline]
     fn submit(&self, node: n::Node) -> Result<Tag> {
         let mut ast = self.ast.lock().expect("Could not lock thread");
-        let value = ast.len();
         let tag = match &node {
-            n::Node::Nil => Tag::Nil(value),
-            n::Node::Boolean(..) => Tag::Boolean(value),
-            n::Node::Number(..) => Tag::Number(value),
-            n::Node::String(..) => Tag::String(value),
-            n::Node::Symbol(..) => Tag::Symbol(value),
-            n::Node::Definition(..) => Tag::Definition(value),
-            n::Node::Do(..) => Tag::Do(value),
-            n::Node::FunctionCall(..) => Tag::Call(value),
-            n::Node::Function(..) => Tag::Function(value),
-            n::Node::If(..) => Tag::If(value),
-            n::Node::Program(..) => Tag::Program(value),
-            n::Node::Vector(..) => Tag::Vector(value),
-            n::Node::While(..) => Tag::While(value),
-            n::Node::Loop(..) => Tag::Loop(value),
-            n::Node::Recur(..) => Tag::Recur(value),
-            n::Node::Meta(..) => Tag::Meta(value),
-            n::Node::Quote(..) => Tag::Quote(value),
-            n::Node::Decorator(..) => Tag::Decorator(value),
-            n::Node::Let(..) => Tag::Let(value),
-            n::Node::Macro(..) => Tag::Macro(value),
-            n::Node::QuasiQuote(..) => Tag::QuasiQuote(value),
+            n::Node::Nil => TagKind::Nil,
+            n::Node::Boolean(..) => TagKind::Boolean,
+            n::Node::Number(..) => TagKind::Number,
+            n::Node::String(..) => TagKind::String,
+            n::Node::Symbol(..) => TagKind::Symbol,
+            n::Node::Definition(..) => TagKind::Definition,
+            n::Node::Do(..) => TagKind::Do,
+            n::Node::FunctionCall(..) => TagKind::Call,
+            n::Node::Function(..) => TagKind::Function,
+            n::Node::If(..) => TagKind::If,
+            n::Node::Program(..) => TagKind::Program,
+            n::Node::Vector(..) => TagKind::Vector,
+            n::Node::While(..) => TagKind::While,
+            n::Node::Loop(..) => TagKind::Loop,
+            n::Node::Recur(..) => TagKind::Recur,
+            n::Node::Meta(..) => TagKind::Meta,
+            n::Node::Quote(..) => TagKind::Quote,
+            n::Node::Decorator(..) => TagKind::Decorator,
+            n::Node::Let(..) => TagKind::Let,
+            n::Node::Macro(..) => TagKind::Macro,
+            n::Node::QuasiQuote(..) => TagKind::QuasiQuote,
             n::Node::List(..) => todo!("list"),
             n::Node::Keyword(..) => todo!("keyword"),
-        };
+        }
+        .reify(ast.len());
         ast.insert(tag, node);
         return Ok(tag);
     }

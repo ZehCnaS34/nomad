@@ -1,6 +1,5 @@
 use crate::ast::node::{Node, ToNode};
 use crate::ast::tag::Partition;
-use crate::ast::TagIter;
 use crate::result::parser::ErrorKind;
 use crate::result::parser::ErrorKind::General;
 use crate::{ast, ast::Tag};
