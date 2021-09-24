@@ -1,9 +1,14 @@
+use super::super::Concat;
+use super::super::Introspection;
+use super::super::Length;
 use std::fmt;
 use std::fmt::Formatter;
 
+type Str = std::string::String;
+
 #[derive(Debug, Clone)]
 pub struct String {
-    value: std::string::String,
+    pub value: std::string::String,
 }
 
 impl fmt::Display for String {

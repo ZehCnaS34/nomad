@@ -161,7 +161,7 @@ mod test {
         assert_eq!(span.get(), (0, 0));
         assert_eq!(span.advance(&source[..]), Some('a'));
         assert_eq!(span.get(), (0, 1));
-        assert_eq!(span.view(&source[..]), Some("a"));
+        assert_eq!(span.view(&source[..]), Some("a".to_string()));
         assert_eq!(span.get(), (1, 1));
     }
 

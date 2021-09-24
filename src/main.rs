@@ -1,14 +1,11 @@
-// #[macro_use]
-// extern crate vulkano_shaders;
+#[macro_use]
+extern crate lazy_static;
 #[macro_use]
 extern crate prettytable;
 #[macro_use]
 pub mod ast;
-mod ecs;
 pub mod interpreter;
 pub mod result;
-mod scratch;
-// pub mod win;
 
 use crate::ast::parser;
 use crate::ast::parser::parse;

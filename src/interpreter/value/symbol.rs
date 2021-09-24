@@ -1,10 +1,12 @@
-use std::fmt;
 use crate::ast::node::SymbolNode;
+use std::fmt;
+
+type STR = &'static str;
 
 #[derive(Debug, Clone, Eq, PartialEq, Hash)]
 pub struct Symbol {
-    name: String,
-    namespace: Option<String>,
+    pub name: String,
+    pub namespace: Option<String>,
 }
 
 impl fmt::Display for Symbol {
@@ -13,27 +15,6 @@ impl fmt::Display for Symbol {
             write!(f, "{}/{}", namespace, self.name())
         } else {
             write!(f, "{}", self.name())
-        }
-    }
-}
-
-impl From<&str> for Symbol {
-    fn from(value: &str) -> Self {
-        if value.len() == 1 {
-            Symbol {
-                name: String::from(value),
-                namespace: None,
-            }
-        } else if let Some(index) = value.find('/') {
-            Symbol {
-                name: String::from(&value[index + 1..]),
-                namespace: Some(String::from(&value[..index])),
-            }
-        } else {
-            Symbol {
-                name: String::from(value),
-                namespace: None,
-            }
         }
     }
 }
@@ -63,8 +44,8 @@ impl Symbol {
     }
 }
 
-impl From<(&'static str, &'static str)> for Symbol{
-    fn from((ns, n): (&'static str, &'static str)) -> Self {
+impl From<(STR, STR)> for Symbol {
+    fn from((ns, n): (STR, STR)) -> Self {
         Symbol {
             name: n.into(),
             namespace: Some(ns.into()),
@@ -72,8 +53,8 @@ impl From<(&'static str, &'static str)> for Symbol{
     }
 }
 
-impl From<(&'static str)> for Symbol {
-    fn from((n): &'static str) -> Self {
+impl From<(STR)> for Symbol {
+    fn from((n): (STR)) -> Self {
         Symbol {
             name: n.into(),
             namespace: None,

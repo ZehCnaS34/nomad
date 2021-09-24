@@ -1,7 +1,8 @@
+use super::operation::*;
 use super::value::*;
 use super::Interpreter;
 use crate::ast::node::*;
-use crate::ast::tag::*;
+use crate::interpreter::value::NativeFunction;
 use crate::result::runtime::ErrorKind;
 use crate::result::RuntimeResult;
 use std::time::{SystemTime, UNIX_EPOCH};
@@ -13,7 +14,7 @@ pub trait Execute {
 impl Execute for Node {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
         match self {
-            Node::Boolean(node) => Ok(Value::Boolean(node.value())),
+            Node::Boolean(node) => Ok(Value::make_bool(node.value())),
             Node::Decorator(node) => node.execute(interpreter),
             Node::Definition(node) => node.execute(interpreter),
             Node::Do(node) => node.execute(interpreter),
@@ -26,11 +27,13 @@ impl Execute for Node {
             Node::Loop(node) => todo!(),
             Node::Meta(node) => node.execute(interpreter),
             Node::Nil => Ok(Value::Nil),
-            Node::Number(number) => Ok(Value::Number(number.value())),
+            Node::Number(number) => Ok(Value::make_number(number.value())),
             Node::Program(node) => node.execute(interpreter),
             Node::Quote(node) => node.execute(interpreter),
             Node::Recur(node) => todo!(),
-            Node::String(node) => Ok(Value::String(String::from(node.value()))),
+            Node::String(node) => Ok(Value::String(String {
+                value: node.value().to_string(),
+            })),
             Node::Symbol(node) => Ok(Value::Symbol(Symbol::from_node(node.clone()))),
             Node::Vector(node) => node.execute(interpreter),
             Node::While(node) => node.execute(interpreter),
@@ -80,7 +83,7 @@ impl Execute for IfNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
         if interpreter
             .interpret_and_resolve_tag(self.condition)?
-            .is_truthy()
+            .truthy()
         {
             interpreter.interpret_and_resolve_tag(self.true_branch)
         } else {
@@ -105,7 +108,7 @@ impl Execute for WhileNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
         loop {
             let condition = interpreter.interpret_tag(self.condition())?;
-            if !condition.is_truthy() {
+            if !condition.truthy() {
                 break;
             }
             for tag in self.body() {
@@ -144,10 +147,8 @@ impl Execute for FunctionCallNode {
         match function {
             Value::Function(function) => {
                 let parameters = {
-                    let node = interpreter.get_node(function.parameters)?;
-                    let vector = node.take_vector().ok_or(ErrorKind::InvalidNode)?;
                     let mut parameters = vec![];
-                    for tag in vector.items() {
+                    for tag in function.parameters {
                         parameters.push(
                             interpreter
                                 .interpret_tag(tag)?
@@ -183,12 +184,12 @@ impl Execute for FunctionCallNode {
                     let since_the_epoch = start
                         .duration_since(UNIX_EPOCH)
                         .expect("time went backwards");
-                    Ok(Value::Number(since_the_epoch.as_millis() as f64))
+                    Ok(Value::Number(since_the_epoch.as_millis().into()))
                 }
                 NativeFunction::Plus => {
                     let mut arguments = self.arguments().into_iter();
                     match arguments.len() {
-                        0 => Ok(Value::Number(0.0)),
+                        0 => Ok(Value::Number(0.0.into())),
                         1 => interpreter.interpret_tag(arguments.next().unwrap()),
                         n => {
                             interpreter.context.push_scope();
@@ -206,7 +207,7 @@ impl Execute for FunctionCallNode {
                 NativeFunction::Minus => {
                     let mut arguments = self.arguments().into_iter();
                     match arguments.len() {
-                        0 => Ok(Value::Number(0.0)),
+                        0 => Ok(Value::Number(0.0.into())),
                         1 => interpreter.interpret_and_resolve_tag(arguments.next().unwrap()),
                         n => {
                             let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArity)?;
@@ -222,7 +223,7 @@ impl Execute for FunctionCallNode {
                 NativeFunction::Multiply => {
                     let mut arguments = self.arguments().into_iter();
                     match arguments.len() {
-                        0 => Ok(Value::Number(1.0)),
+                        0 => Ok(Value::Number(1.0.into())),
                         1 => interpreter.interpret_and_resolve_tag(arguments.next().unwrap()),
                         n => {
                             let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArity)?;
@@ -238,7 +239,7 @@ impl Execute for FunctionCallNode {
                 NativeFunction::Divide => {
                     let mut arguments = self.arguments().into_iter();
                     match arguments.len() {
-                        0 => Ok(Value::Number(1.0)),
+                        0 => Ok(Value::Number(1.0.into())),
                         1 => interpreter.interpret_and_resolve_tag(arguments.next().unwrap()),
                         n => {
                             let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArity)?;
@@ -297,7 +298,7 @@ impl Execute for FunctionCallNode {
                     for arg in arguments {
                         let value = interpreter.interpret_and_resolve_tag(arg)?;
                         if let Some(l) = &last {
-                            if interpreter.eq(&l, &value)?.is_truthy() {
+                            if interpreter.eq(&l, &value)?.truthy() {
                                 last = Some(value);
                             } else {
                                 flag = false;
@@ -307,13 +308,13 @@ impl Execute for FunctionCallNode {
                             last = Some(value);
                         }
                     }
-                    Ok(Value::Boolean(flag))
+                    Ok(Value::Boolean(flag.into()))
                 }
                 NativeFunction::Or => {
                     let mut arguments = self.arguments().into_iter();
                     for arg in arguments {
                         let value = interpreter.interpret_and_resolve_tag(arg)?;
-                        if value.is_truthy() {
+                        if value.truthy() {
                             return Ok(value);
                         }
                     }
@@ -326,7 +327,7 @@ impl Execute for FunctionCallNode {
                     for arg in arguments {
                         let value = interpreter.interpret_and_resolve_tag(arg)?;
                         if let Some(l) = &last {
-                            if interpreter.lt(&l, &value)?.is_truthy() {
+                            if interpreter.lt(&l, &value)?.truthy() {
                                 last = Some(value);
                             } else {
                                 flag = false;
@@ -336,7 +337,7 @@ impl Execute for FunctionCallNode {
                             last = Some(value);
                         }
                     }
-                    Ok(Value::Boolean(flag))
+                    Ok(Value::Boolean(flag.into()))
                 }
                 NativeFunction::GreaterThan => {
                     let arguments = self.arguments().into_iter();
@@ -345,7 +346,7 @@ impl Execute for FunctionCallNode {
                     for arg in arguments {
                         let value = interpreter.interpret_and_resolve_tag(arg)?;
                         if let Some(l) = &last {
-                            if interpreter.gt(&l, &value)?.is_truthy() {
+                            if interpreter.gt(&l, &value)?.truthy() {
                                 last = Some(value);
                             } else {
                                 flag = false;
@@ -355,7 +356,7 @@ impl Execute for FunctionCallNode {
                             last = Some(value);
                         }
                     }
-                    Ok(Value::Boolean(flag))
+                    Ok(Value::Boolean(flag.into()))
                 }
             },
             value => panic!("{:?} is not callable", value),
@@ -365,19 +366,22 @@ impl Execute for FunctionCallNode {
 
 impl Execute for FunctionNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
-        Ok(if let Some(name) = self.name() {
-            let name = interpreter.interpret_tag(name)?;
-            let name = name.take_symbol().ok_or(ErrorKind::NodeNotFound);
-            let value = Value::Function(Function {
-                parameters: self.parameters(),
-                body: self.body(),
-            });
-            value
-        } else {
-            Value::Function(Function {
-                parameters: self.parameters(),
-                body: self.body(),
-            })
-        })
+        todo!("fix me");
+        // Ok(if let Some(name) = self.name() {
+        //     let name = interpreter.interpret_tag(name)?;
+        //     let name = name.take_symbol().ok_or(ErrorKind::NodeNotFound);
+        //     let value = Value::Function(Function {
+        //         name: None,
+        //         parameters: self.parameters(),
+        //         body: self.body(),
+        //     });
+        //     value
+        // } else {
+        //     Value::Function(Function {
+        //         name: None,
+        //         parameters: self.parameters(),
+        //         body: self.body(),
+        //     })
+        // })
     }
 }

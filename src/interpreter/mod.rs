@@ -2,18 +2,27 @@ use super::ast::{node, node::Node, parser::AST, Tag};
 use super::result::runtime::ErrorKind;
 use super::result::RuntimeResult;
 use std::collections::{HashMap, VecDeque};
-use std::ops::Deref;
 use std::sync::Mutex;
 
 mod context;
 mod execution;
+mod frame;
+mod operation;
 mod value;
 
 use context::Context;
 use execution::Execute;
-pub use value::{NativeFunction, Symbol, Value, Var};
 
-trait Operation {}
+pub use operation::{Compare, Concat, Introspection, Length, Math};
+
+use value::Boolean;
+use value::Function;
+use value::NativeFunction;
+use value::Number;
+use value::String;
+use value::Symbol;
+use value::Value;
+use value::Var;
 
 #[derive(Debug)]
 pub struct Interpreter {
@@ -41,7 +50,7 @@ impl Interpreter {
             context.define("-", Minus);
             context.define("print", Print);
             context.define("println", Println);
-            context.define("*version*", 0);
+            context.define("*version*", Value::make_number(0.into()));
             context
         };
         Interpreter {
@@ -54,7 +63,7 @@ impl Interpreter {
     fn lt(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
         use Value::{Boolean, Number};
         match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Boolean(l < r)),
+            (Number(l), Number(r)) => Ok(l.lt(r).into()),
             pair => Err(ErrorKind::InvalidOperation),
         }
     }
@@ -62,7 +71,7 @@ impl Interpreter {
     fn eq(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
         use Value::{Boolean, Number};
         match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Boolean(l == r)),
+            (Number(l), Number(r)) => Ok(l.eq(r).into()),
             pair => Err(ErrorKind::InvalidOperation),
         }
     }
@@ -70,16 +79,16 @@ impl Interpreter {
     fn gt(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
         use Value::{Boolean, Number};
         match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Boolean(l > r)),
+            (Number(l), Number(r)) => Ok(l.gt(r).into()),
             pair => Err(ErrorKind::InvalidOperation),
         }
     }
 
     fn add(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
-        use Value::Number;
+        use Value::{Number, String};
         match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l + r)),
-            (Value::String(l), Value::String(r)) => Ok(Value::String(format!("{}{}", l, r))),
+            (Number(l), Number(r)) => Ok(Number(l.add(r))),
+            (String(l), String(r)) => Ok(String(l.concat(r))),
             pair => Err(ErrorKind::InvalidOperation),
         }
     }
@@ -87,7 +96,7 @@ impl Interpreter {
     fn modulus(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
         use Value::Number;
         match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l % r)),
+            (Number(l), Number(r)) => Ok(Number(l.modulus(r))),
             pair => Err(ErrorKind::InvalidOperation),
         }
     }
@@ -95,7 +104,7 @@ impl Interpreter {
     fn sub(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
         use Value::Number;
         match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l - r)),
+            (Number(l), Number(r)) => Ok(Number(l.sub(r))),
             pair => Err(ErrorKind::InvalidOperation),
         }
     }
@@ -103,7 +112,7 @@ impl Interpreter {
     fn mul(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
         use Value::Number;
         match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l * r)),
+            (Number(l), Number(r)) => Ok(Number(l.mul(r))),
             pair => Err(ErrorKind::InvalidOperation),
         }
     }
@@ -111,7 +120,7 @@ impl Interpreter {
     fn div(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
         use Value::Number;
         match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l / r)),
+            (Number(l), Number(r)) => Ok(Number(l.div(r))),
             pair => Err(ErrorKind::InvalidOperation),
         }
     }

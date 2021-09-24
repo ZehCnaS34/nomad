@@ -196,7 +196,6 @@ mod scope {
 use namespace::Namespace;
 use pointers::Pointers;
 use scope::Scope;
-use std::ops::{Deref, DerefMut};
 
 #[derive(Debug)]
 pub struct Context {
@@ -260,7 +259,10 @@ impl Context {
             let mut name = symbol.clone();
             namespace.bind(name.clone(), value.clone());
             name.qualify(namespace.name());
-            name.to_var()
+            Var {
+                name: name.name().to_string(),
+                namespace: namespace.name().to_string(),
+            }
         })
     }
 

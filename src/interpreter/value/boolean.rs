@@ -1,19 +1,31 @@
+use super::super::operation::Introspection;
 use std::fmt;
 use std::fmt::Formatter;
-use super::operation::Operation;
 
 #[derive(Debug, Clone)]
 pub struct Boolean {
-    value: bool,
+    pub value: bool,
 }
 
-impl Operation for Boolean {
-    fn is_truthy(&self) -> bool {
-        self.value
+impl From<bool> for Boolean {
+    fn from(value: bool) -> Self {
+        Boolean { value }
     }
+}
 
-    fn eq(&self, other: &Self) -> bool {
-        self.value == other.value
+impl Boolean {
+    fn as_int(&self) -> i32 {
+        if self.value {
+            1
+        } else {
+            0
+        }
+    }
+}
+
+impl Introspection for Boolean {
+    fn truthy(&self) -> bool {
+        self.value
     }
 }
 

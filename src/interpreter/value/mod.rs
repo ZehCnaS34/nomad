@@ -1,21 +1,21 @@
+mod boolean;
 mod function;
+mod hash_map;
+mod keyword;
 mod number;
 mod string;
 mod symbol;
 mod var;
-mod boolean;
-mod operation;
+
 use std::fmt;
 
-
-use function::Function;
-use function::NativeFunction;
-use number  ::Number;
-use string  ::String;
-use symbol  ::Symbol;
-use var     ::Var;
-use boolean ::Boolean;
-use crate::interpreter::value::operation::Operation;
+pub use boolean::Boolean;
+pub use function::Function;
+pub use function::NativeFunction;
+pub use number::Number;
+pub use string::String;
+pub use symbol::Symbol;
+pub use var::Var;
 
 pub const NIL: Value = Value::Nil;
 
@@ -24,11 +24,23 @@ pub enum Value {
     Nil,
     Boolean(Boolean),
     Number(Number),
-    String(St),
+    String(String),
     Symbol(Symbol),
     Var(Var),
     Function(Function),
     NativeFunction(NativeFunction),
+}
+
+impl From<bool> for Value {
+    fn from(value: bool) -> Self {
+        Value::Boolean(value.into())
+    }
+}
+
+impl From<f64> for Value {
+    fn from(value: f64) -> Self {
+        Value::Number(value.into())
+    }
 }
 
 impl From<NativeFunction> for Value {
@@ -36,7 +48,6 @@ impl From<NativeFunction> for Value {
         Value::NativeFunction(f)
     }
 }
-
 
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -53,8 +64,25 @@ impl fmt::Display for Value {
     }
 }
 
-
 impl Value {
+    pub fn make_number(value: f64) -> Value {
+        Value::Number(Number { value })
+    }
+
+    pub fn make_string(value: &str) -> Value {
+        Value::String(String {
+            value: value.to_string(),
+        })
+    }
+
+    pub fn make_nil() -> Value {
+        Value::Nil
+    }
+
+    pub fn make_bool(value: bool) -> Value {
+        Value::Boolean(Boolean { value })
+    }
+
     pub fn show(self) -> Self {
         println!("value {}", self);
         return self;
@@ -84,14 +112,6 @@ impl Value {
         match self {
             Value::Symbol(symbol) => Some(symbol),
             _ => None,
-        }
-    }
-
-    pub fn is_truthy(&self) -> bool {
-        match self {
-            Value::Boolean(boolean) => boolean.is_truthy(),
-            Value::Nil => false,
-            _ => true,
         }
     }
 }

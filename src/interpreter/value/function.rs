@@ -1,10 +1,11 @@
-use crate::ast::Tag;
 use super::symbol::Symbol;
+use crate::ast::Tag;
 
+#[derive(Debug, Clone)]
 pub struct Function {
-    name: Symbol,
-    parameters: Vec<Symbol>,
-    body: Vec<Tag>
+    pub name: Option<Symbol>,
+    pub parameters: Vec<Tag>,
+    pub body: Vec<Tag>,
 }
 
 #[derive(Debug, Clone)]
