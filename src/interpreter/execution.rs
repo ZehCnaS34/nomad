@@ -192,7 +192,7 @@ impl Execute for FunctionCallNode {
                         1 => interpreter.interpret_tag(arguments.next().unwrap()),
                         n => {
                             interpreter.context.push_scope();
-                            let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArrity)?;
+                            let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArity)?;
                             let mut base = interpreter.interpret_and_resolve_tag(base)?;
                             for tag in arguments {
                                 let value = interpreter.interpret_and_resolve_tag(tag)?;
@@ -209,7 +209,7 @@ impl Execute for FunctionCallNode {
                         0 => Ok(Value::Number(0.0)),
                         1 => interpreter.interpret_and_resolve_tag(arguments.next().unwrap()),
                         n => {
-                            let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArrity)?;
+                            let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArity)?;
                             let mut base = interpreter.interpret_and_resolve_tag(base)?;
                             for tag in arguments {
                                 let value = interpreter.interpret_and_resolve_tag(tag)?;
@@ -225,7 +225,7 @@ impl Execute for FunctionCallNode {
                         0 => Ok(Value::Number(1.0)),
                         1 => interpreter.interpret_and_resolve_tag(arguments.next().unwrap()),
                         n => {
-                            let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArrity)?;
+                            let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArity)?;
                             let mut base = interpreter.interpret_and_resolve_tag(base)?;
                             for tag in arguments {
                                 let value = interpreter.interpret_and_resolve_tag(tag)?;
@@ -241,7 +241,7 @@ impl Execute for FunctionCallNode {
                         0 => Ok(Value::Number(1.0)),
                         1 => interpreter.interpret_and_resolve_tag(arguments.next().unwrap()),
                         n => {
-                            let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArrity)?;
+                            let base = arguments.next().ok_or(ErrorKind::InvalidArgumentArity)?;
                             let mut base = interpreter.interpret_and_resolve_tag(base)?;
                             for tag in arguments {
                                 let value = interpreter.interpret_and_resolve_tag(tag)?;

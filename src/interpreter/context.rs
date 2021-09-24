@@ -131,7 +131,13 @@ mod scope {
             });
         }
 
-        pub fn define(&mut self, name: Symbol, value: Value) {
+        pub fn define<S, V>(&mut self, name: S, value: V)
+        where
+            S: Into<Symbol>,
+            V: Into<Value>,
+        {
+            let name = name.into();
+            let value = value.into();
             let values = self
                 .root
                 .as_ref()
@@ -243,10 +249,16 @@ impl Context {
         context
     }
 
-    pub fn define(&self, name: Symbol, atom: Value) -> Var {
+    pub fn define<S, V>(&self, symbol: S, value: V) -> Var
+    where
+        S: Into<Symbol>,
+        V: Into<Value>,
+    {
+        let symbol = symbol.into();
+        let value = value.into();
         self.using_namespace(|namespace| {
-            let mut name = name.clone();
-            namespace.bind(name.clone(), atom.clone());
+            let mut name = symbol.clone();
+            namespace.bind(name.clone(), value.clone());
             name.qualify(namespace.name());
             name.to_var()
         })

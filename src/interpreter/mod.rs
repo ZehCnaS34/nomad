@@ -11,7 +11,7 @@ mod value;
 
 use context::Context;
 use execution::Execute;
-use value::{NativeFunction, Symbol, Value};
+pub use value::{NativeFunction, Symbol, Value, Var};
 
 trait Operation {}
 
@@ -24,61 +24,26 @@ pub struct Interpreter {
 
 impl Interpreter {
     pub fn new() -> Interpreter {
-        let mut context = Context::new();
-        context.new_namespace(Symbol::from("nomad.core"));
-        context.define(
-            Symbol::from("now"),
-            Value::NativeFunction(NativeFunction::Now),
-        );
-        context.define(
-            Symbol::from("dump-context"),
-            Value::NativeFunction(NativeFunction::DumpContext),
-        );
-        context.define(Symbol::from("="), Value::NativeFunction(NativeFunction::Eq));
-        context.define(
-            Symbol::from("mod"),
-            Value::NativeFunction(NativeFunction::Mod),
-        );
-        context.define(
-            Symbol::from("<"),
-            Value::NativeFunction(NativeFunction::LessThan),
-        );
-        context.define(
-            Symbol::from("or"),
-            Value::NativeFunction(NativeFunction::Or),
-        );
-        context.define(
-            Symbol::from(">"),
-            Value::NativeFunction(NativeFunction::GreaterThan),
-        );
-        context.define(
-            Symbol::from("+"),
-            Value::NativeFunction(NativeFunction::Plus),
-        );
-        context.define(
-            Symbol::from("*"),
-            Value::NativeFunction(NativeFunction::Multiply),
-        );
-        context.define(
-            Symbol::from("/"),
-            Value::NativeFunction(NativeFunction::Divide),
-        );
-        context.define(
-            Symbol::from("-"),
-            Value::NativeFunction(NativeFunction::Minus),
-        );
-        context.define(
-            Symbol::from("print"),
-            Value::NativeFunction(NativeFunction::Print),
-        );
-        context.define(
-            Symbol::from("println"),
-            Value::NativeFunction(NativeFunction::Println),
-        );
-        context.define(
-            Symbol::from("*version*"),
-            0.into(),
-        );
+        let context = {
+            use NativeFunction::*;
+            let context = Context::new();
+            context.new_namespace(Symbol::from("nomad.core"));
+            context.define("now", Now);
+            context.define("dump-context", DumpContext);
+            context.define("=", Eq);
+            context.define("mod", Mod);
+            context.define("<", LessThan);
+            context.define("or", Or);
+            context.define(">", GreaterThan);
+            context.define("+", Plus);
+            context.define("*", Multiply);
+            context.define("/", Divide);
+            context.define("-", Minus);
+            context.define("print", Print);
+            context.define("println", Println);
+            context.define("*version*", 0);
+            context
+        };
         Interpreter {
             ast: None,
             context,

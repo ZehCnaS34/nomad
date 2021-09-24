@@ -12,7 +12,7 @@ pub mod runtime {
         InvalidOperation,
         NodeNotFound,
         InvalidNode,
-        InvalidArgumentArrity,
+        InvalidArgumentArity,
         General(&'static str),
     }
 }

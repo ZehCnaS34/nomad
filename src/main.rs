@@ -7,6 +7,7 @@ pub mod ast;
 mod ecs;
 pub mod interpreter;
 pub mod result;
+mod scratch;
 // pub mod win;
 
 use crate::ast::parser;
