@@ -6,6 +6,7 @@ mod number;
 mod string;
 mod symbol;
 mod var;
+mod vector;
 
 use std::fmt;
 

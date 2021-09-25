@@ -1,10 +1,10 @@
-use std::fmt;
 use super::Value;
 use std::cell::Cell;
+use std::cmp::max;
+use std::fmt;
+use std::fmt::Formatter;
 use std::rc::Rc;
 use std::sync::{Arc, Mutex};
-use std::cmp::max;
-use std::fmt::Formatter;
 
 const SIZE: usize = 4;
 
@@ -13,13 +13,13 @@ lazy_static! {
 }
 
 fn make_id() -> i32 {
-    let mut count = COUNT.lock().unwrap();
+    let mut count = COUNT.try_lock().unwrap();
     *count += 1;
     count.clone()
 }
 
 fn reset_id() {
-    let mut count = COUNT.lock().unwrap();
+    let mut count = COUNT.try_lock().unwrap();
     *count = 0;
 }
 
@@ -39,7 +39,7 @@ struct Node {
     id: i32,
     depth: usize,
     value: Option<i32>,
-    slots: Vec<Link>,
+    links: Vec<Link>,
 }
 
 impl fmt::Display for Node {
@@ -48,8 +48,8 @@ impl fmt::Display for Node {
             write!(f, "({})", value)
         } else {
             write!(f, "[")?;
-            let last = self.slots.len()-1;
-            for (i, slot) in self.slots.iter().enumerate() {
+            let last = self.links.len() - 1;
+            for (i, slot) in self.links.iter().enumerate() {
                 write!(f, "{}", slot)?;
                 if i != last {
                     write!(f, " ")?;
@@ -66,14 +66,14 @@ impl Default for Node {
             id: make_id(),
             depth: 0,
             value: None,
-            slots: Vec::with_capacity(SIZE),
+            links: Vec::with_capacity(SIZE),
         }
     }
 }
 
 impl Node {
     fn push_node(&mut self, node: Rc<Node>) {
-        self.slots.push(node);
+        self.links.push(node);
     }
 
     fn is_leaf(&self) -> bool {
@@ -81,21 +81,21 @@ impl Node {
     }
 
     fn push(&mut self, value: i32) {
-        self.slots.push(Rc::new(Node {
+        self.links.push(Rc::new(Node {
             id: make_id(),
             depth: 0,
             value: Some(value),
-            slots: Vec::with_capacity(SIZE),
+            links: Vec::with_capacity(SIZE),
         }));
     }
 
     fn is_full(&self) -> bool {
         if self.value.is_some() {
             return true;
-        } else if self.slots.len() < SIZE {
+        } else if self.links.len() < SIZE {
             return false;
         } else {
-            self.slots[SIZE - 1].is_full()
+            self.links[SIZE - 1].is_full()
         }
     }
 }
@@ -174,8 +174,7 @@ mod test {
             .conj(3)
             .conj(1)
             .conj(2)
-            .conj(3)
-            ;
+            .conj(3);
         println!("{}", list);
     }
 }
