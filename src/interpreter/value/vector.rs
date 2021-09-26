@@ -1,52 +1,66 @@
-use std::borrow::BorrowMut;
-use std::fmt;
-use std::fmt::Formatter;
-use std::mem;
-use std::ops::Deref;
-use std::sync::{Arc, Mutex, MutexGuard};
-use Node::*;
-use Insert::*;
+use Issue::*;
+use std::ops::{IndexMut, Index};
 
-const N: usize = 3;
-
-enum Insert<P, D> {
-    Put(P),
-    Drop(D),
+#[derive(Clone, Debug)]
+enum Issue<T> {
+    Full(T),
+    InvalidIndex(T),
 }
 
-
-#[derive(Debug, Clone)]
+#[derive(Clone, Debug)]
 struct Leaf<T> {
-    slots: [Option<T>; N],
+    size: usize,
+    data: Vec<T>,
 }
 
 impl<T> Leaf<T> {
-    fn push(self) -> Insert<Leaf<T>, T> {
+    fn is_overflow(&self, index: usize) -> bool {
+        index >= self.size || index >= self.data.len()
     }
-}
+    fn is_full(&self) -> bool {
+        self.size == self.data.len()
+    }
 
-#[derive(Debug, Clone)]
-struct Internal<T> {
-    slots: [Option<Arc<Node<T>>>; N],
-}
+    fn new() -> Leaf<T> {
+        Leaf {
+            size: 4 as usize,
+            data: Vec::with_capacity(4),
+        }
+    }
 
-#[derive(Debug, Clone)]
-enum Node<T> {
-    L(Leaf<T>),
-    I(Internal<T>),
-}
-
-impl<T: Clone + fmt::Debug> Node<T> {
-    fn push_value(&self, value: T) -> Insert<Node<T>, T>
+    fn push(&self, value: T) -> Result<Leaf<T>, Issue<T>>
     where
-        T: fmt::Debug + fmt::Debug,
+        T: Clone,
     {
-        match self {
-            I(..) => Drop(value),
-            L(leaf) => {
-                let mut leaf = leaf.clone();
-                Drop(value)
-            }
+        if self.is_full() {
+            return Err(Full(value));
+        } else {
+            let mut leaf = self.clone();
+            leaf.data.push(value);
+            return Ok(leaf);
+        }
+    }
+
+    fn replace(&self, index: usize, value: T) -> Result<Leaf<T>, Issue<T>> 
+    where T: Clone{
+        if self.is_overflow(index) {
+            Err(InvalidIndex(value))
+        } else {
+            let mut leaf = self.clone();
+            leaf.data.remove(index);
+            leaf.data.insert(index, value);
+            Ok(leaf)
+        }
+    }
+
+    fn remove(&self, index: usize) -> Result<Leaf<T>, Issue<()>>
+    where T: Clone {
+        if self.is_overflow(index) {
+            Err(InvalidIndex(()))
+        } else {
+            let mut leaf = self.clone();
+            leaf.data.remove(index);
+            Ok(leaf)
         }
     }
 }
@@ -56,9 +70,12 @@ mod test {
     use super::*;
 
     #[test]
-    fn leaf() {
-        let leaf = Node::<i32>::L(Leaf { slots: [None; N] });
-        println!("{:#?}", leaf);
-        leaf.push_value(23);
+    fn leaf_push() -> Result<(), Issue<i32>> {
+        let base: Leaf<i32> = Leaf::new().push(1)?.push(2)?;
+        let no_one = base.remove(0);
+        println!("{:?}", base);
+        println!("{:?}", no_one);
+        Ok(())
+
     }
 }
