@@ -2,9 +2,11 @@ mod boolean;
 mod function;
 mod hash_map;
 mod keyword;
+mod list;
 mod number;
 mod string;
 mod symbol;
+mod trie;
 mod var;
 mod vector;
 

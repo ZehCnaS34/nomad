@@ -1,272 +1,259 @@
+use std::borrow::BorrowMut;
 use std::fmt;
 use std::fmt::Formatter;
 use std::sync::Arc;
-use Node::*;
-use std::borrow::BorrowMut;
 
-// reference: https://hypirion.com/musings/understanding-persistent-vector-pt-1
-
-const N: usize = 2;
-
-trait Bucket {
-    fn has_space(&self) -> bool;
-}
-
-#[derive(Debug, Clone)]
-struct Vector {
-    length: usize,
-    root: Arc<Node>,
-}
-
-impl Vector {
-    fn new() -> Vector {
-        Vector {
-            length: 0,
-            root: Arc::new(Node::new_leaf()),
-        }
-    }
-}
-
-#[derive(Debug, Clone)]
-enum Node {
-    I(Internal),
-    L(Leaf),
-}
-
-type Link = Arc<Node>;
-#[derive(Debug, Clone)]
-struct Internal {
-    depth: usize,
-    links: Vec<Link>,
-}
-
-impl Internal {
-    fn get(&self, index: usize) -> Option<Link> {
-        let index = index.local(self.depth);
-        self.links.get(index).cloned()
-    }
-
-    fn last(&self) -> Option<Arc<Node>> {
-        self.links.last().map(|link| link.clone())
-    }
-}
-
-#[derive(Debug, Clone)]
-struct Leaf {
-    data: Vec<i32>,
-}
-
-impl Leaf {
-    fn get(&self, index: usize) -> Option<i32> {
-        let index = index.local(0);
-        self.data.get(index).cloned()
-    }
-}
-
-#[derive(Debug, Clone)]
-enum Info {
-    RoomLeaf,
-    RoomInternal,
-    Full,
-}
-
-impl Node {
-    fn has_root_space(&self) -> bool {
-        match self {
-            I(i) => i.links.len() < N,
-            L(l) => l.data.len() < N,
-        }
-    }
-
-    fn has_right_most_space(&self) -> bool {
-        match self {
-            I(i) => i
-                .links
-                .last()
-                .map(|link| link.as_ref().has_right_most_space())
-                .unwrap_or(true),
-            L(l) => l.data.len() < N,
-        }
-    }
-
-    fn new_internal() -> Node {
-        I(Internal::default())
-    }
-
-    fn new_leaf() -> Node {
-        L(Leaf::default())
-    }
-
-    fn conj(self: Arc<Node>, value: i32) -> Arc<Node> {
-        let node = self.clone();
-        match node.as_ref() {
-            L(leaf) => {
-                if !leaf.has_space() {
-                    let mut internal = Internal::default();
-                    let mut child = {
-                        let mut leaf = Leaf::default();
-                        leaf.data.push(value);
-                        L(leaf)
-                    };
-                    internal.links.push(node);
-                    internal.links.push(Arc::new(child));
-                    Arc::new(I(internal))
-                } else {
-                    let mut leaf = leaf.clone();
-                    leaf.data.push(value);
-                    Arc::new(L(leaf))
-                }
-            }
-            I(internal) => {
-                if let Some(last_child) = internal.last() {
-                    if last_child.has_right_most_space() {
-                        let mut internal = internal.clone();
-                        let last_child = last_child.conj(value);
-                        let omg = internal.links.last_mut().unwrap();
-                        *omg = last_child;
-                        return Arc::new(I(internal));
-                    } else if last_child.has_root_space() {
-                        let mut internal = internal.clone();
-                        internal.links.push(Arc::new(child));
-                        println!("internal = {:?}", internal);
-                        Arc::new(I(internal))
-                    }
-                    todo!()
-                } else if internal.depth == 1 {
-                    let mut internal = internal.clone();
-                    // conj leaf
-                    let child = {
-                        let mut leaf = Leaf::default();
-                        leaf.data.push(value);
-                        L(leaf)
-                    };
-                    internal.links.push(Arc::new(child));
-                    return Arc::new(I(internal));
-                } else {
-                    // insert internal
-                    let mut internal = internal.clone();
-                    let mut sub_internal = Internal::default();
-                    sub_internal.depth = internal.depth - 1;
-                    let child_node = Arc::new(I(sub_internal)).conj(value);
-                    internal.links.push(child_node);
-                    return Arc::new(I(internal));
-                }
-            }
-        }
-    }
-}
-
-trait NodeIndex {
-    fn local(&self, depth: usize) -> usize;
-    fn is_over(&self) -> bool;
-}
-
-impl NodeIndex for usize {
-    fn local(&self, depth: usize) -> usize {
-        let mask = (!(usize::MAX << N) << (depth * N));
-        let result = (mask & self) >> (depth * N);
-        println!("{:08b} {:08b} {:08b}", mask, self, result);
-        result
-    }
-
-    fn is_over(&self) -> bool {
-        *self >= N.pow(2)
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use super::*;
-    #[test]
-    fn setting() {
-        let base = Arc::new(Node::new_leaf())
-            .conj(3)
-            .conj(4)
-            .conj(5)
-            .conj(6)
-            .conj(7)
-        ;
-        println!("{}", base);
-        // let zer = Node::new_leaf();
-        // let one = zer.conj(1);
-        // let two = zer.conj(2);
-        // println!("{:?}", zer);
-        // println!("{:?}", one);
-        // println!("{:?}", two);
-    }
-}
-
-impl Bucket for Node {
-    fn has_space(&self) -> bool {
-        match self {
-            I(node) => node.has_space(),
-            L(node) => node.has_space(),
-        }
-    }
-}
-
-impl Bucket for Internal {
-    fn has_space(&self) -> bool {
-        self.links.len() < N
-    }
-}
-
-impl Bucket for Leaf {
-    fn has_space(&self) -> bool {
-        self.data.len() < N
-    }
-}
-
-impl Default for Internal {
-    fn default() -> Internal {
-        Internal {
-            depth: 1,
-            links: Vec::with_capacity(N),
-        }
-    }
-}
-
-impl Default for Leaf {
-    fn default() -> Leaf {
-        Leaf {
-            data: Vec::with_capacity(N),
-        }
-    }
-}
-
-impl fmt::Display for Leaf {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        let end = self.data.len();
-        for (i, data) in self.data.iter().enumerate() {
-            write!(f, "{}", data)?;
-            if (i + 1) < end {
-                write!(f, ",")?;
-            }
-        }
-        Ok(())
-    }
-}
-
-impl fmt::Display for Internal {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "(")?;
-        let end = self.links.len();
-        for (i, data) in self.links.iter().enumerate() {
-            write!(f, "{}", data)?;
-            if i + 1 < end {
-                write!(f, ";")?;
-            }
-        }
-        write!(f, ")")?;
-        Ok(())
-    }
-}
-
-impl fmt::Display for Node {
-    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self {
-            I(i) => write!(f, "{}", i),
-            L(l) => write!(f, "{}", l),
-        }
-    }
-}
+// use Node::*;
+// const BITS: usize = 2;
+// const SLOTS: usize = BITS.pow(2);
+// const MASK: usize = (1 << BITS) - 1;
+//
+// enum Operation {
+//     InvalidNode(Leaf),
+//     InternalFull(Leaf)
+// }
+//
+// #[derive(Clone, Debug)]
+// enum NodeAction {
+//     TraverseRight,
+//     GenInternal,
+//     GenRoot,
+// }
+//
+// // reference: https://hypirion.com/musings/understanding-persistent-vector-pt-1
+//
+// #[derive(Clone, Debug)]
+// struct Vector {
+//     length: usize,
+//     root: Arc<Node>,
+//     tail: Arc<Node>,
+// }
+//
+// impl Vector {
+//     fn new() -> Vector {
+//         Vector {
+//             length: 0,
+//             root: Arc::new(I(Internal::default())),
+//             tail: Arc::new(L(Leaf::default())),
+//         }
+//     }
+//     fn tail_offset(&self) -> usize {
+//         self.length - self.tail.len()
+//     }
+//
+//     fn tree_index(&self, index: usize) -> Option<&i32> {
+//         todo!()
+//     }
+//
+//     fn tree_update(&self, index: usize, value: i32) -> Vector {
+//         todo!()
+//     }
+//
+//     fn get(&self, index: usize) -> Option<&i32> {
+//         if index < self.tail_offset() {
+//             self.tree_index(index)
+//         } else {
+//             let leaf = self.tail.as_leaf().expect("Tail should be leaf");
+//             leaf.data.get(index - self.tail_offset())
+//         }
+//     }
+//
+//     fn is_tail_full(&self) -> bool {
+//         self.tail.len() == SLOTS
+//     }
+//
+//     fn conj(&self, value: i32) -> Vector {
+//         if self.is_tail_full() {
+//             let new_tail = {
+//                 let mut tail = Leaf::default();
+//                 tail.data.push(value);
+//                 tail
+//             };
+//             let mut vector = self.clone();
+//             vector.length += 1;
+//             if vector.root.is_full_tree() {
+//                 let previous_root = vector.root.clone();
+//                 let previous_depth = previous_root.depth();
+//                 let mut new_root = Internal::default();
+//                 new_root.depth = previous_root.depth() + 1;
+//                 new_root.links.push(previous_root);
+//
+//                 let mut low_inter = Internal::default();
+//                 low_inter.links.push(self.tail.clone());
+//                 for depth in 2..previous_depth {
+//                     let mut high_inter = Internal::default();
+//                     high_inter.links.push(Arc::new(I(low_inter)));
+//                     low_inter = high_inter;
+//                 }
+//                 new_root.links.push(Arc::new(I(low_inter)));
+//
+//                 vector.tail = Arc::new(L(new_tail));
+//                 vector.root = Arc::new(I(new_root));
+//                 return vector;
+//             } else {
+//                 let mut internal = vector.root.as_ref().clone().take_internal().unwrap();
+//
+//
+//                 // let mut node = vector.root.as_ref().clone();
+//             }
+//             todo!()
+//         } else {
+//             let mut vector = self.clone();
+//             let mut tail = vector.tail.as_ref().clone();
+//             {
+//                 let mut tail = tail.mut_leaf().expect("Tail should always be a leaf.");
+//                 tail.data.push(value);
+//             }
+//             vector.length += 1;
+//             vector.tail = Arc::new(tail);
+//             vector
+//         }
+//     }
+// }
+//
+// #[derive(Debug, Clone)]
+// struct Internal {
+//     depth: usize,
+//     links: Vec<Link>,
+// }
+//
+//
+// impl Default for Internal {
+//     fn default() -> Self {
+//         Internal { depth: 1, links: Vec::with_capacity(SLOTS) }
+//     }
+// }
+//
+// type Link = Arc<Node>;
+// #[derive(Debug, Clone)]
+// enum Node {
+//     I(Internal),
+//     L(Leaf),
+// }
+//
+// impl Node {
+//     fn put_leaf(&self, leaf: Leaf) -> Result<Node, Operation> {
+//         if self.is_leaf() {
+//             Err(Operation::InvalidNode(leaf))
+//         } else if if self.is_full_tree() {
+//
+//             let mut new_root = Internal::default();
+//             todo!()
+//         } else {
+//             todo!()
+//         }
+//     }
+//
+//     fn depth (&self) -> usize {
+//         match self {
+//             I(i) => i.depth,
+//             L(l) => 0
+//         }
+//     }
+//     fn is_full_tree(&self) -> bool {
+//         match self {
+//             I(internal) => {
+//                 if internal.links.len() < SLOTS {
+//                     return false
+//                 } else if let Some(link) = internal.links.last() {
+//                     link.is_full_tree()
+//                 } else {
+//                     unreachable!()
+//                 }
+//             }
+//             L(leaf) => {
+//                 leaf.data.len() >= SLOTS
+//             }
+//         }
+//     }
+//
+//     fn mut_internal(&mut self) -> Option<&mut Internal> {
+//         match self {
+//             I(i) => Some(i),
+//             L(..) => none
+//         }
+//     }
+//
+//     fn mut_leaf(&mut self) -> Option<&mut Leaf> {
+//         match self {
+//             I(_) => None,
+//             L(leaf) => Some(leaf)
+//         }
+//     }
+//
+//     fn is_leaf(&self) -> bool {
+//         self.as_leaf().is_some()
+//     }
+//
+//     fn as_leaf(&self) -> Option<&Leaf> {
+//         match self {
+//             I(_) => None,
+//             L(leaf) => Some(leaf)
+//         }
+//     }
+//
+//     fn as_internal (&self) -> Option<&Internal> {
+//         match self {
+//             I(internal) => Some(internal),
+//             L(_) => None
+//         }
+//     }
+//
+//     fn take_internal(self) -> Option<Internal> {
+//         match self {
+//             I(internal) => Some(internal),
+//             L(_) => None
+//         }
+//     }
+// }
+//
+// #[derive(Debug, Clone)]
+// struct Leaf {
+//     data: Vec<i32>,
+// }
+//
+// impl Default for Leaf {
+//     fn default() -> Self {
+//         Leaf { data: Vec::with_capacity(SLOTS) }
+//     }
+// }
+//
+//
+// impl Node {
+//     fn len(&self) -> usize {
+//         match self {
+//             I(i) => i.links.len(),
+//             L(l) => l.data.len()
+//         }
+//     }
+// }
+//
+// #[cfg(test)]
+// mod test {
+//     use super::*;
+//
+//     #[test]
+//     fn tail_update() {
+//         let v = Vector::new()
+//             .conj(1)
+//             .conj(2)
+//             .conj(3)
+//             .conj(4)
+//         ;
+//         println!("{:?}", v);
+//     }
+//
+//     #[test]
+//     fn tail_set_overflow() {
+//         let v = Vector::new()
+//             .conj(1)
+//             .conj(2)
+//             .conj(3)
+//             .conj(4)
+//             ;
+//         println!("{:?}", v);
+//         let v2 = v.conj(5);
+//         println!("{:?}", v2);
+//     }
+//
+// }
