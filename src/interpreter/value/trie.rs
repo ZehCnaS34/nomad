@@ -1,10 +1,14 @@
 use std::borrow::Borrow;
+use std::cmp::max;
 use std::fmt;
 use std::fmt::Formatter;
 use std::ops::Deref;
 use std::sync::Arc;
 use Node::*;
 use View::*;
+
+const INTERNAL_LINK_ERROR: &'static str = "Links should have at least one child.";
+const LINK_INVARIANT: &'static str = "Expected an internal link";
 
 enum Operation<Ok, Value> {
     Success(Ok),
@@ -21,8 +25,8 @@ enum Issue<T> {
 type Result<T, K> = std::result::Result<T, Issue<K>>;
 
 const BITS: usize = 2;
-const SLOTS: usize = BITS.pow(2);
-const MASK: usize = (1 << BITS) - 1;
+const SLOTS: usize = 1 << BITS;
+const MASK: usize = SLOTS - 1;
 
 #[derive(Debug, Clone)]
 enum Node<T> {
@@ -38,29 +42,74 @@ enum View<'a, T> {
 enum Info {
     RightMostRoom,
     RoomInSelf,
+    RoomInSubtree,
     Full,
 }
 
 impl<T> Node<T> {
-    fn info(&self) -> Info {
-        if self.has_right_most_space() {
-            Info::RightMostRoom
-        } else if self.is_full() {
-            Info::Full
-        } else {
-            Info::RoomInSelf
+    fn len(&self) -> usize {
+        match self.view() {
+            Values(vs) => vs.len(),
+            Links(ls) => ls.len(),
         }
     }
+
+    fn gen_leaf() -> Node<T> {
+        Leaf { values: vec![] }
+    }
+
+    fn gen_internal(depth: usize) -> Node<T> {
+        Internal {
+            depth,
+            links: vec![],
+        }
+    }
+
+    fn decrease_depth(mut self) -> Node<T> {
+        match self {
+            Node::Leaf { values } => Leaf { values },
+            Node::Internal { depth, links } => Internal {
+                depth: max(depth - 1, 1),
+                links,
+            },
+        }
+    }
+
+    fn info(&self) -> Info {
+        match self.view() {
+            Values(values) => {
+                if values.len() < SLOTS {
+                    Info::RightMostRoom
+                } else {
+                    Info::Full
+                }
+            }
+            Links(links) => {
+                let link = links.last().expect(INTERNAL_LINK_ERROR).as_ref();
+                match link.info() {
+                    Info::RightMostRoom => Info::RightMostRoom,
+                    Info::RoomInSelf => Info::RoomInSubtree,
+                    Info::RoomInSubtree => Info::RoomInSubtree,
+                    Info::Full => {
+                        if links.len() < SLOTS {
+                            Info::RoomInSelf
+                        } else {
+                            Info::Full
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     fn has_right_most_space(&self) -> bool {
         match self.view() {
             Values(values) => values.len() < SLOTS,
-            Links(links) => {
-                let last = links
-                    .last()
-                    .expect("links should have at least one child")
-                    .as_ref();
-                last.has_right_most_space()
-            }
+            Links(links) => links
+                .last()
+                .expect(INTERNAL_LINK_ERROR)
+                .as_ref()
+                .has_right_most_space(),
         }
     }
 
@@ -68,7 +117,7 @@ impl<T> Node<T> {
         match self.view() {
             Values(values) => values.len() >= SLOTS,
             Links(links) => {
-                if links.len() >= SLOTS {
+                if links.len() < SLOTS {
                     false
                 } else {
                     let last_link = self.last_link().unwrap();
@@ -79,9 +128,9 @@ impl<T> Node<T> {
     }
 
     fn links(&self) -> Option<&Vec<Link<T>>> {
-        match self {
-            Node::Leaf { .. } => None,
-            Node::Internal { links, .. } => Some(links),
+        match self.view() {
+            Links(links) => Some(links),
+            _ => None,
         }
     }
 
@@ -110,57 +159,54 @@ impl<T> Node<T> {
         }
     }
     fn mask(&self, gid: usize) -> usize {
-        let mask = (MASK << self.depth());
-        gid & mask
+        let offset = (BITS * self.depth());
+        let mask = MASK << offset;
+        (gid & mask) >> offset
     }
 
-    fn update_leaf(&self, gid: usize, value: T) -> Result<Node<T>, ()> {
+    fn get(&self, gid: usize) -> Option<&T>
+    where
+        T: fmt::Debug,
+    {
         let index = self.mask(gid);
         match self {
             Node::Leaf { values } => {
-                let mut values = values.clone();
-                values[index] = Arc::new(value);
-                Ok(Leaf { values })
+                let value = values.get(index)?;
+                let value = value.as_ref();
+                Some(value)
             }
-            Node::Internal { .. } => Err(Issue::WrongNodeOperation),
+            Node::Internal { links, .. } => {
+                let link = links.get(index)?;
+                link.get(gid)
+            }
         }
-    }
-
-    fn push_leaf(&self, value: T) -> Result<Node<T>, T> {
-        let values = self.values().ok_or(Issue::WrongNodeOperation)?;
-        if values.len() >= SLOTS {
-            return Err(Issue::LeafFull(value));
-        }
-        let mut values = values.clone();
-        values.push(Arc::new(value));
-        Ok(Leaf { values })
     }
 
     fn anchor(&self, value: T) -> Self {
         match self {
-            Node::Leaf { .. } => Leaf {
-                values: vec![Arc::new(value)],
-            },
+            Node::Leaf { values } => {
+                let mut values = values.clone();
+                values.push(Arc::new(value));
+                Leaf { values }
+            }
             Node::Internal { depth, links } => {
-                if *depth == 1 {
-                    Internal {
-                        depth: *depth,
-                        links: vec![Arc::new(Leaf { values: vec![] }.anchor(value))],
-                    }
+                let node = if *depth == 1 {
+                    Node::gen_leaf().anchor(value)
                 } else {
-                    Internal {
-                        depth: *depth,
-                        links: vec![Arc::new(Internal {
-                            depth: depth - 1,
-                            links: vec![],
-                        })],
-                    }
+                    Node::gen_internal(depth - 1).anchor(value)
+                };
+                Internal {
+                    depth: *depth,
+                    links: vec![Arc::new(node)],
                 }
             }
         }
     }
 
-    fn push(&self, value: T) -> Self {
+    fn push(&self, value: T) -> Self
+    where
+        T: fmt::Debug,
+    {
         match self.info() {
             Info::RightMostRoom => match self.view() {
                 Values(vs) => {
@@ -181,10 +227,29 @@ impl<T> Node<T> {
                 }
             },
             Info::RoomInSelf => {
-                if let Some(links) = self.links() {
-                    // construct chain
+                let mut links = self.links().expect(LINK_INVARIANT).clone();
+                if self.depth() == 1 {
+                    links.push(Arc::new(Node::gen_leaf().anchor(value)))
+                } else {
+                    links.push(Arc::new(
+                        Node::gen_internal(self.depth())
+                            .decrease_depth()
+                            .anchor(value),
+                    ))
                 }
-                panic!()
+                Internal {
+                    depth: self.depth(),
+                    links,
+                }
+            }
+            Info::RoomInSubtree => {
+                let mut links = self.links().expect(LINK_INVARIANT).clone();
+                let new_link = links.pop().expect(INTERNAL_LINK_ERROR).push(value);
+                links.push(Arc::new(new_link));
+                Internal {
+                    depth: self.depth(),
+                    links,
+                }
             }
             Info::Full => match self {
                 Leaf { values: vs } => {
@@ -202,16 +267,10 @@ impl<T> Node<T> {
                             depth: self.depth(),
                             links: ls.clone(),
                         }),
-                        Arc::new(
-                            Internal {
-                                depth: self.depth(),
-                                links: vec![],
-                            }
-                            .anchor(value),
-                        ),
+                        Arc::new(Node::gen_internal(*depth).anchor(value)),
                     ];
                     Internal {
-                        depth: depth+1,
+                        depth: depth + 1,
                         links,
                     }
                 }
@@ -222,24 +281,28 @@ impl<T> Node<T> {
 
 impl<T: fmt::Display> fmt::Display for Node<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        match self.view() {
-            Values(values) => {
+        match self {
+            Leaf { values } => {
                 let end = values.len();
-                for (i, value) in values {
+                write!(f, "(")?;
+                for (i, value) in values.iter().enumerate() {
                     write!(f, "{}", value)?;
                     if i + 1 != end {
-                        write!(f, ", ")?;
+                        write!(f, ",")?;
                     }
                 }
+                write!(f, ")")?;
             }
-            Links(links) => {
-                let end = values.len();
-                for (i, link) in links {
-                    write!(f, "{}", value)?;
+            Internal { depth, links } => {
+                let end = links.len();
+                write!(f, "(")?;
+                for (i, link) in links.iter().enumerate() {
+                    write!(f, "{}", link)?;
                     if i + 1 != end {
-                        write!(f, ", ")?;
+                        write!(f, " ")?;
                     }
                 }
+                write!(f, ")")?;
             }
         }
         Ok(())
@@ -261,13 +324,13 @@ mod test {
     #[test]
     fn update_leaf() -> Result<(), i32> {
         let mut leaf1 = Leaf { values: vec![] };
-        for value in 0..10 {
+        let n: i32 = 100;
+        for value in 0..n {
             leaf1 = leaf1.push(value);
         }
-
-        println!("{:?}", leaf1.has_right_most_space());
-        println!("{:?}", leaf1.is_full());
-        println!("{:?}", leaf1);
+        for value in 0..n {
+            assert_eq!(Some(&value), leaf1.get(value as usize))
+        }
         Ok(())
     }
 }
