@@ -1,13 +1,15 @@
 (def inc (fn [value] (+ value 1)))
 (def dec (fn [value] (- value 1)))
 
-(def fact
-  (fn [n]
-    (if (= n 1)
-      n
-      (* n (fact (dec n))))))
+(def awesome (fn awesome [] "alexander"))
 
-(+ (fact 5)
-   (fact 5)
-   (fact 5)
-   (fact 5))
+(println awesome)
+
+(def list [1 2 3 4])
+(println list)
+(println (get list 0))
+(println (get list 1))
+(println (get list 2))
+(println (get list 3))
+(def a [(get list 2) (get list 0)])
+(println a)

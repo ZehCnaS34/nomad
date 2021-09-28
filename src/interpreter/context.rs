@@ -1,9 +1,13 @@
 use crate::interpreter::value::{Symbol, Value, Var};
+use crate::result::runtime::ErrorKind as Error;
+use crate::result::RuntimeResult;
 use std::collections::HashMap;
 use std::sync::Mutex;
 
 mod namespace {
     use crate::interpreter::value::{Symbol, Value};
+    use crate::result::runtime::ErrorKind as Error;
+    use crate::result::RuntimeResult;
     use prettytable::{Cell, Row, Table};
     use std::collections::HashMap;
 
@@ -41,11 +45,11 @@ mod namespace {
             self.bindings.insert(name, atom);
         }
 
-        pub fn get(&self, name: &Symbol) -> Value {
-            match self.bindings.get(name).cloned() {
-                Some(value) => value,
-                _ => panic!("Symbol not found {:?}", name),
-            }
+        pub fn get(&self, name: &Symbol) -> RuntimeResult<Value> {
+            self.bindings
+                .get(name)
+                .cloned()
+                .ok_or(Error::BindingNotFound)
         }
     }
 }
@@ -78,6 +82,8 @@ mod pointers {
 
 mod scope {
     use crate::interpreter::value::{Symbol, Value};
+    use crate::result::runtime::ErrorKind as Error;
+    use crate::result::RuntimeResult;
     use prettytable::{Cell, Row, Table};
     use std::borrow::BorrowMut;
     use std::collections::HashMap;
@@ -147,14 +153,14 @@ mod scope {
             values.insert(name, value);
         }
 
-        pub fn resolve(&self, name: &Symbol) -> Option<Value> {
+        pub fn resolve(&self, name: &Symbol) -> RuntimeResult<Value> {
             for scope in self.iter() {
                 let storage = scope.lock().expect("Could not lock storage");
                 if let Some(value) = storage.get(name) {
-                    return Some(value.clone());
+                    return Ok(value.clone());
                 }
             }
-            None
+            Err(Error::BindingNotFound)
         }
 
         pub fn dump(&self) {
@@ -286,12 +292,12 @@ impl Context {
         scope.define(name, value)
     }
 
-    pub fn get(&self, name: &Symbol) -> Option<Value> {
+    pub fn get(&self, name: &Symbol) -> RuntimeResult<Value> {
         let scope = self.scope.lock().expect("Failed to lock scope");
         scope.resolve(name)
     }
 
-    pub fn resolve(&self, name: &Symbol) -> Value {
+    pub fn resolve(&self, name: &Symbol) -> RuntimeResult<Value> {
         self.using_namespace(|namespace| namespace.get(name))
     }
 }

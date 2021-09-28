@@ -13,6 +13,7 @@ pub mod runtime {
         NodeNotFound,
         InvalidNode,
         InvalidArgumentArity,
+        BindingNotFound,
         TagNodeMissMatch,
         MissingNode,
         General(&'static str),

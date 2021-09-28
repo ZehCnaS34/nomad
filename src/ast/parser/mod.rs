@@ -68,7 +68,6 @@ pub struct Parser {
 }
 
 impl Parser {
-    #[inline]
     fn eof(&self) -> bool {
         let position = self.position.get();
         position >= self.tokens.len() || self.tokens[position].kind == Kind::Eof
@@ -79,7 +78,6 @@ impl Parser {
         ast.get(&tag).cloned()
     }
 
-    #[inline]
     fn submit(&self, node: n::Node) -> Result<Tag> {
         let mut ast = self.ast.lock().expect("Could not lock thread");
         let tag = match &node {
@@ -112,12 +110,10 @@ impl Parser {
         return Ok(tag);
     }
 
-    #[inline]
     fn next(&self) {
         self.position.set(self.position.get() + 1);
     }
 
-    #[inline]
     fn peek(&self) -> Option<&Token> {
         self.tokens.get(self.position.get())
     }

@@ -1,4 +1,5 @@
 use super::value::*;
+use crate::result::runtime::ErrorKind;
 
 pub trait Introspection {
     fn truthy(&self) -> bool;
@@ -14,6 +15,13 @@ pub trait Compare {
     }
     fn lt(&self, other: &Self) -> bool;
     fn gt(&self, other: &Self) -> bool;
+}
+
+pub trait Lookup {
+    type Item;
+    type Key;
+    type Err;
+    fn lookup(&self, key: Self::Key) -> Result<&Self::Item, Self::Err>;
 }
 
 pub trait Math {
@@ -115,5 +123,16 @@ impl Introspection for String {
 impl Length for String {
     fn length(&self) -> usize {
         self.value.len()
+    }
+}
+
+impl Lookup for Vector<Value> {
+    type Item = Value;
+    type Key = Number;
+    type Err = ErrorKind;
+
+    fn lookup(&self, key: Self::Key) -> Result<&Self::Item, Self::Err> {
+        let key = key.value as usize;
+        self.get(key).ok_or(ErrorKind::BindingNotFound)
     }
 }

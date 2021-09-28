@@ -38,10 +38,9 @@ fn run_file(file: String) {
     let ast = parse(tokens).expect("Failed to parse AST");
     let mut interpreter = interpreter::Interpreter::new();
     match interpreter.eval(ast) {
-        Ok(result) => println!("{:?}", result),
+        Ok(result) => println!("{}", result),
         Err(err) => println!("failure {:?}", err),
     }
-    println!("{:#?}", interpreter);
 }
 
 fn main() {

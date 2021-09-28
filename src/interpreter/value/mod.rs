@@ -20,6 +20,8 @@ pub use string::String;
 pub use symbol::Symbol;
 pub use var::Var;
 pub use vector::Vector;
+use crate::interpreter::operation::Lookup;
+use crate::result::runtime::ErrorKind;
 
 pub const NIL: Value = Value::Nil;
 
@@ -33,7 +35,23 @@ pub enum Value {
     Var(Var),
     Function(Function),
     NativeFunction(NativeFunction),
-    Vector(Vector<Arc<Value>>),
+    Vector(Vector<Value>),
+}
+
+impl Lookup for Value {
+    type Item = Value;
+    type Key = Value;
+    type Err = ErrorKind;
+
+    fn lookup(&self, key: Self::Key) -> Result<&Self::Item, ErrorKind> {
+        match (self, key) {
+            (Value::Vector(vector), Value::Number(number)) => vector.lookup(number),
+            (left, right) => {
+                println!("left {} {}", left, right);
+                Err(ErrorKind::General("un supported lookup"))
+            }
+        }
+    }
 }
 
 impl From<bool> for Value {
@@ -63,9 +81,15 @@ impl fmt::Display for Value {
             Value::String(value) => write!(f, "{}", value),
             Value::Symbol(value) => write!(f, "{}", value),
             Value::Var(value) => write!(f, "{}", value),
-            Value::Function(value) => write!(f, "[fn]"),
+            Value::Function(value) => {
+                if let Some(name) = &value.name {
+                    write!(f, "[fn:{}]", name)
+                } else {
+                    write!(f, "[fn:anonymous]")
+                }
+            }
             Value::NativeFunction(value) => write!(f, "[native]"),
-            Value::Vector(vector) => write!(f, "[vector"),
+            Value::Vector(vector) => write!(f, "{}", vector),
         }
     }
 }

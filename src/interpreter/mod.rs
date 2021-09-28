@@ -31,12 +31,29 @@ use value::Value;
 use value::Var;
 
 pub trait NodeQuery {
+    fn get_nodes(&self, tags: Vec<Tag>) -> RuntimeResult<Vec<Node>>;
+    fn get_node(&self, tag: Tag) -> RuntimeResult<Node>;
     fn get_vector(&self, tag: Tag) -> RuntimeResult<VectorNode>;
     fn get_symbol(&self, tags: Tag) -> RuntimeResult<SymbolNode>;
     fn get_symbols(&self, tags: &Vec<Tag>) -> RuntimeResult<Vec<SymbolNode>>;
 }
 
 impl NodeQuery for Interpreter {
+    fn get_nodes(&self, tags: Vec<Tag>) -> RuntimeResult<Vec<Node>> {
+        let mut nodes = vec![];
+        for tag in tags {
+            nodes.push(self.get_node(tag)?);
+        }
+        Ok(nodes)
+    }
+
+    fn get_node(&self, tag: Tag) -> RuntimeResult<Node> {
+        self.ast
+            .as_ref()
+            .and_then(|ast| ast.get(&tag).cloned())
+            .ok_or(ErrorKind::NodeNotFound)
+    }
+
     fn get_vector(&self, tag: Tag) -> RuntimeResult<VectorNode> {
         if let Node::Vector(node) = self.get_node(tag)? {
             Ok(node)
@@ -86,6 +103,7 @@ impl Interpreter {
             context.define("*", Multiply);
             context.define("/", Divide);
             context.define("-", Minus);
+            context.define("get", Get);
             context.define("print", Print);
             context.define("println", Println);
             context.define("*version*", Value::make_number(0.into()));
@@ -167,35 +185,24 @@ impl Interpreter {
         self.context.dump();
     }
 
-    #[inline]
     pub(crate) fn put(&self, symbol: value::Symbol, atom: value::Value) {
         let mut values = self.values.lock().unwrap();
         values.insert(symbol, atom);
     }
 
-    pub fn get_node(&self, tag: Tag) -> RuntimeResult<Node> {
-        self.ast
-            .as_ref()
-            .and_then(|ast| ast.get(&tag).cloned())
-            .ok_or(ErrorKind::NodeNotFound)
-    }
-
-    #[inline]
     pub fn interpret_tag(&self, tag: Tag) -> RuntimeResult<Value> {
         let node = self.get_node(tag)?;
         node.execute(&self)
     }
 
     pub fn resolve(&self, symbol: &Symbol) -> RuntimeResult<Value> {
-        // I'm not happy with this implementation
-        Ok(self
-            .context
-            .get(symbol)
-            .or_else(|| Some(self.context.resolve(symbol)))
-            .unwrap())
+        if let Ok(value) = self.context.get(symbol) {
+            Ok(value)
+        } else {
+            self.context.resolve(symbol)
+        }
     }
 
-    #[inline]
     pub fn interpret_and_resolve_tag(&self, tag: Tag) -> RuntimeResult<Value> {
         let value = self.interpret_tag(tag)?;
         Ok(value

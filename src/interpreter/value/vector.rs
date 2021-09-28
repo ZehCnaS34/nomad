@@ -65,7 +65,7 @@ impl<T> Node<T> {
         }
     }
 
-    fn decrease_depth(mut self) -> Node<T> {
+    fn decrease_depth(self) -> Node<T> {
         match self {
             Node::Leaf { values } => Leaf { values },
             Node::Internal { depth, links } => Internal {
@@ -189,14 +189,14 @@ impl<T> Node<T> {
                 Leaf { values }
             }
             Node::Internal { depth, links } => {
-                let node = if *depth == 1 {
+                let node = Arc::new(if *depth == 1 {
                     Node::gen_leaf().anchor(value)
                 } else {
                     Node::gen_internal(depth - 1).anchor(value)
-                };
+                });
                 Internal {
                     depth: *depth,
-                    links: vec![Arc::new(node)],
+                    links: vec![node],
                 }
             }
         }
@@ -275,6 +275,23 @@ impl<T> Node<T> {
                 }
             },
         }
+    }
+}
+
+// impl<T> Drop for Node<T> {
+//     fn drop(&mut self) {
+//         println!("dropping") ;
+//     }
+// }
+
+impl<T: fmt::Display> fmt::Display for Vector<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "( ");
+        for i in 0..self.length {
+            write!(f, "{} ", self.get(i).unwrap())?;
+        }
+        write!(f, ")");
+        Ok(())
     }
 }
 

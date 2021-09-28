@@ -23,4 +23,5 @@ pub enum NativeFunction {
     Mod,
     GreaterThan,
     Now,
+    Get,
 }

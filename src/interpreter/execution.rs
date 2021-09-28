@@ -7,6 +7,7 @@ use crate::interpreter::value::NativeFunction;
 use crate::result::runtime::ErrorKind;
 use crate::result::RuntimeResult;
 use std::time::{SystemTime, UNIX_EPOCH};
+use crate::ast::tag::Partition;
 
 pub trait Execute {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value>;
@@ -72,7 +73,12 @@ impl Execute for DecoratorNode {
 
 impl Execute for VectorNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
-        todo!("Failed")
+        let mut vector = Vector::new();
+        for tag in self.items() {
+            let value = interpreter.interpret_and_resolve_tag(tag)?;
+            vector = vector.push(value);
+        }
+        Ok(Value::Vector(vector))
     }
 }
 
@@ -175,6 +181,13 @@ impl Execute for FunctionCallNode {
                 Ok(result)
             }
             Value::NativeFunction(native) => match native {
+                NativeFunction::Get => {
+                    let arguments: Vec<_> =  self.arguments().iter().flat_map(|tag| {
+                        interpreter.interpret_and_resolve_tag(*tag)
+                    }).collect();
+                    let (object, key, rest) = arguments.take_2().ok_or(ErrorKind::InvalidOperation)?;
+                    object.lookup(key).map(|value| value.clone())
+                }
                 NativeFunction::Now => {
                     let start = SystemTime::now();
                     let since_the_epoch = start
@@ -372,7 +385,9 @@ impl Execute for FunctionNode {
                 .get_symbols(&parameter_nodes.items())?
                 .iter()
                 .flat_map(|node| {
-                    node.execute(interpreter).ok().and_then(|value| value.take_symbol())
+                    node.execute(interpreter)
+                        .ok()
+                        .and_then(|value| value.take_symbol())
                 })
                 .collect();
             Ok(Value::Function(Function {
