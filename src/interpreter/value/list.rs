@@ -141,10 +141,8 @@ mod test {
         for value in 0..100 {
             list = list.conj(value);
         }
-        let list2 = list.insert(3, 34).unwrap();
-        assert_eq!(list.length, 100);
-        assert_eq!(list2.length, 101);
-        println!("{}", list);
-        println!("{}", list2);
+        for (value, key) in (0..100).rev().zip(list.iter()) {
+            assert_eq!(value, *key);
+        }
     }
 }

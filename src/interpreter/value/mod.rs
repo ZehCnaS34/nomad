@@ -6,11 +6,11 @@ mod list;
 mod number;
 mod string;
 mod symbol;
-mod trie;
 mod var;
 mod vector;
 
 use std::fmt;
+use std::sync::Arc;
 
 pub use boolean::Boolean;
 pub use function::Function;
@@ -19,6 +19,7 @@ pub use number::Number;
 pub use string::String;
 pub use symbol::Symbol;
 pub use var::Var;
+pub use vector::Vector;
 
 pub const NIL: Value = Value::Nil;
 
@@ -32,6 +33,7 @@ pub enum Value {
     Var(Var),
     Function(Function),
     NativeFunction(NativeFunction),
+    Vector(Vector<Arc<Value>>),
 }
 
 impl From<bool> for Value {
@@ -63,6 +65,7 @@ impl fmt::Display for Value {
             Value::Var(value) => write!(f, "{}", value),
             Value::Function(value) => write!(f, "[fn]"),
             Value::NativeFunction(value) => write!(f, "[native]"),
+            Value::Vector(vector) => write!(f, "[vector"),
         }
     }
 }

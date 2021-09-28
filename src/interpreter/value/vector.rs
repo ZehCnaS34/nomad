@@ -1,259 +1,375 @@
-use std::borrow::BorrowMut;
+use std::borrow::Borrow;
+use std::cmp::max;
 use std::fmt;
 use std::fmt::Formatter;
+use std::ops::Deref;
 use std::sync::Arc;
+use Node::*;
+use View::*;
 
-// use Node::*;
-// const BITS: usize = 2;
-// const SLOTS: usize = BITS.pow(2);
-// const MASK: usize = (1 << BITS) - 1;
-//
-// enum Operation {
-//     InvalidNode(Leaf),
-//     InternalFull(Leaf)
-// }
-//
-// #[derive(Clone, Debug)]
-// enum NodeAction {
-//     TraverseRight,
-//     GenInternal,
-//     GenRoot,
-// }
-//
-// // reference: https://hypirion.com/musings/understanding-persistent-vector-pt-1
-//
-// #[derive(Clone, Debug)]
-// struct Vector {
-//     length: usize,
-//     root: Arc<Node>,
-//     tail: Arc<Node>,
-// }
-//
-// impl Vector {
-//     fn new() -> Vector {
-//         Vector {
-//             length: 0,
-//             root: Arc::new(I(Internal::default())),
-//             tail: Arc::new(L(Leaf::default())),
-//         }
-//     }
-//     fn tail_offset(&self) -> usize {
-//         self.length - self.tail.len()
-//     }
-//
-//     fn tree_index(&self, index: usize) -> Option<&i32> {
-//         todo!()
-//     }
-//
-//     fn tree_update(&self, index: usize, value: i32) -> Vector {
-//         todo!()
-//     }
-//
-//     fn get(&self, index: usize) -> Option<&i32> {
-//         if index < self.tail_offset() {
-//             self.tree_index(index)
-//         } else {
-//             let leaf = self.tail.as_leaf().expect("Tail should be leaf");
-//             leaf.data.get(index - self.tail_offset())
-//         }
-//     }
-//
-//     fn is_tail_full(&self) -> bool {
-//         self.tail.len() == SLOTS
-//     }
-//
-//     fn conj(&self, value: i32) -> Vector {
-//         if self.is_tail_full() {
-//             let new_tail = {
-//                 let mut tail = Leaf::default();
-//                 tail.data.push(value);
-//                 tail
-//             };
-//             let mut vector = self.clone();
-//             vector.length += 1;
-//             if vector.root.is_full_tree() {
-//                 let previous_root = vector.root.clone();
-//                 let previous_depth = previous_root.depth();
-//                 let mut new_root = Internal::default();
-//                 new_root.depth = previous_root.depth() + 1;
-//                 new_root.links.push(previous_root);
-//
-//                 let mut low_inter = Internal::default();
-//                 low_inter.links.push(self.tail.clone());
-//                 for depth in 2..previous_depth {
-//                     let mut high_inter = Internal::default();
-//                     high_inter.links.push(Arc::new(I(low_inter)));
-//                     low_inter = high_inter;
-//                 }
-//                 new_root.links.push(Arc::new(I(low_inter)));
-//
-//                 vector.tail = Arc::new(L(new_tail));
-//                 vector.root = Arc::new(I(new_root));
-//                 return vector;
-//             } else {
-//                 let mut internal = vector.root.as_ref().clone().take_internal().unwrap();
-//
-//
-//                 // let mut node = vector.root.as_ref().clone();
-//             }
-//             todo!()
-//         } else {
-//             let mut vector = self.clone();
-//             let mut tail = vector.tail.as_ref().clone();
-//             {
-//                 let mut tail = tail.mut_leaf().expect("Tail should always be a leaf.");
-//                 tail.data.push(value);
-//             }
-//             vector.length += 1;
-//             vector.tail = Arc::new(tail);
-//             vector
-//         }
-//     }
-// }
-//
-// #[derive(Debug, Clone)]
-// struct Internal {
-//     depth: usize,
-//     links: Vec<Link>,
-// }
-//
-//
-// impl Default for Internal {
-//     fn default() -> Self {
-//         Internal { depth: 1, links: Vec::with_capacity(SLOTS) }
-//     }
-// }
-//
-// type Link = Arc<Node>;
-// #[derive(Debug, Clone)]
-// enum Node {
-//     I(Internal),
-//     L(Leaf),
-// }
-//
-// impl Node {
-//     fn put_leaf(&self, leaf: Leaf) -> Result<Node, Operation> {
-//         if self.is_leaf() {
-//             Err(Operation::InvalidNode(leaf))
-//         } else if if self.is_full_tree() {
-//
-//             let mut new_root = Internal::default();
-//             todo!()
-//         } else {
-//             todo!()
-//         }
-//     }
-//
-//     fn depth (&self) -> usize {
-//         match self {
-//             I(i) => i.depth,
-//             L(l) => 0
-//         }
-//     }
-//     fn is_full_tree(&self) -> bool {
-//         match self {
-//             I(internal) => {
-//                 if internal.links.len() < SLOTS {
-//                     return false
-//                 } else if let Some(link) = internal.links.last() {
-//                     link.is_full_tree()
-//                 } else {
-//                     unreachable!()
-//                 }
-//             }
-//             L(leaf) => {
-//                 leaf.data.len() >= SLOTS
-//             }
-//         }
-//     }
-//
-//     fn mut_internal(&mut self) -> Option<&mut Internal> {
-//         match self {
-//             I(i) => Some(i),
-//             L(..) => none
-//         }
-//     }
-//
-//     fn mut_leaf(&mut self) -> Option<&mut Leaf> {
-//         match self {
-//             I(_) => None,
-//             L(leaf) => Some(leaf)
-//         }
-//     }
-//
-//     fn is_leaf(&self) -> bool {
-//         self.as_leaf().is_some()
-//     }
-//
-//     fn as_leaf(&self) -> Option<&Leaf> {
-//         match self {
-//             I(_) => None,
-//             L(leaf) => Some(leaf)
-//         }
-//     }
-//
-//     fn as_internal (&self) -> Option<&Internal> {
-//         match self {
-//             I(internal) => Some(internal),
-//             L(_) => None
-//         }
-//     }
-//
-//     fn take_internal(self) -> Option<Internal> {
-//         match self {
-//             I(internal) => Some(internal),
-//             L(_) => None
-//         }
-//     }
-// }
-//
-// #[derive(Debug, Clone)]
-// struct Leaf {
-//     data: Vec<i32>,
-// }
-//
-// impl Default for Leaf {
-//     fn default() -> Self {
-//         Leaf { data: Vec::with_capacity(SLOTS) }
-//     }
-// }
-//
-//
-// impl Node {
-//     fn len(&self) -> usize {
-//         match self {
-//             I(i) => i.links.len(),
-//             L(l) => l.data.len()
-//         }
-//     }
-// }
-//
-// #[cfg(test)]
-// mod test {
-//     use super::*;
-//
-//     #[test]
-//     fn tail_update() {
-//         let v = Vector::new()
-//             .conj(1)
-//             .conj(2)
-//             .conj(3)
-//             .conj(4)
-//         ;
-//         println!("{:?}", v);
-//     }
-//
-//     #[test]
-//     fn tail_set_overflow() {
-//         let v = Vector::new()
-//             .conj(1)
-//             .conj(2)
-//             .conj(3)
-//             .conj(4)
-//             ;
-//         println!("{:?}", v);
-//         let v2 = v.conj(5);
-//         println!("{:?}", v2);
-//     }
-//
-// }
+const INTERNAL_LINK_ERROR: &'static str = "Links should have at least one child.";
+const LINK_INVARIANT: &'static str = "Expected an internal link";
+
+enum Operation<Ok, Value> {
+    Success(Ok),
+    WrongNodeOperation(Value),
+    LeafFull(Value),
+}
+
+#[derive(Debug, Clone)]
+enum Issue<T> {
+    WrongNodeOperation,
+    LeafFull(T),
+}
+
+type Result<T, K> = std::result::Result<T, Issue<K>>;
+
+const BITS: usize = 5;
+const SLOTS: usize = 1 << BITS;
+const MASK: usize = SLOTS - 1;
+
+#[derive(Debug, Clone)]
+enum Node<T> {
+    Leaf { values: Vec<T> },
+    Internal { depth: usize, links: Vec<Link<T>> },
+}
+
+enum View<'a, T> {
+    Values(&'a Vec<T>),
+    Links(&'a Vec<Link<T>>),
+}
+
+enum Info {
+    RightMostRoom,
+    RoomInSelf,
+    RoomInSubtree,
+    Full,
+}
+
+impl<T> Node<T> {
+    fn len(&self) -> usize {
+        match self.view() {
+            Values(vs) => vs.len(),
+            Links(ls) => ls.len(),
+        }
+    }
+
+    fn gen_leaf() -> Node<T> {
+        Leaf { values: vec![] }
+    }
+
+    fn gen_internal(depth: usize) -> Node<T> {
+        Internal {
+            depth,
+            links: vec![],
+        }
+    }
+
+    fn decrease_depth(mut self) -> Node<T> {
+        match self {
+            Node::Leaf { values } => Leaf { values },
+            Node::Internal { depth, links } => Internal {
+                depth: max(depth - 1, 1),
+                links,
+            },
+        }
+    }
+
+    fn info(&self) -> Info {
+        match self.view() {
+            Values(values) => {
+                if values.len() < SLOTS {
+                    Info::RightMostRoom
+                } else {
+                    Info::Full
+                }
+            }
+            Links(links) => {
+                let link = links.last().expect(INTERNAL_LINK_ERROR).as_ref();
+                match link.info() {
+                    Info::RightMostRoom => Info::RightMostRoom,
+                    Info::RoomInSelf => Info::RoomInSubtree,
+                    Info::RoomInSubtree => Info::RoomInSubtree,
+                    Info::Full => {
+                        if links.len() < SLOTS {
+                            Info::RoomInSelf
+                        } else {
+                            Info::Full
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    fn has_right_most_space(&self) -> bool {
+        match self.view() {
+            Values(values) => values.len() < SLOTS,
+            Links(links) => links
+                .last()
+                .expect(INTERNAL_LINK_ERROR)
+                .as_ref()
+                .has_right_most_space(),
+        }
+    }
+
+    fn is_full(&self) -> bool {
+        match self.view() {
+            Values(values) => values.len() >= SLOTS,
+            Links(links) => {
+                if links.len() < SLOTS {
+                    false
+                } else {
+                    let last_link = self.last_link().unwrap();
+                    last_link.is_full()
+                }
+            }
+        }
+    }
+
+    fn links(&self) -> Option<&Vec<Link<T>>> {
+        match self.view() {
+            Links(links) => Some(links),
+            _ => None,
+        }
+    }
+
+    fn view(&self) -> View<T> {
+        match self {
+            Node::Leaf { values } => Values(values),
+            Node::Internal { links, .. } => Links(links),
+        }
+    }
+
+    fn last_link(&self) -> Option<&Link<T>> {
+        self.links()?.last()
+    }
+
+    fn values(&self) -> Option<&Vec<T>> {
+        match self {
+            Node::Leaf { values } => Some(values),
+            Node::Internal { .. } => None,
+        }
+    }
+
+    fn depth(&self) -> usize {
+        match self {
+            Node::Leaf { .. } => 0,
+            Node::Internal { depth, .. } => *depth,
+        }
+    }
+    fn mask(&self, key: usize) -> usize {
+        let offset = (BITS * self.depth());
+        let mask = MASK << offset;
+        (key & mask) >> offset
+    }
+
+    fn get(&self, key: usize) -> Option<&T> {
+        let index = self.mask(key);
+        match self {
+            Node::Leaf { values } => {
+                let value = values.get(index)?;
+                Some(value)
+            }
+            Node::Internal { links, .. } => {
+                let link = links.get(index)?;
+                link.get(key)
+            }
+        }
+    }
+
+    fn anchor(&self, value: T) -> Self
+    where
+        T: Clone,
+    {
+        match self {
+            Node::Leaf { values } => {
+                let mut values = values.clone();
+                values.push(value);
+                Leaf { values }
+            }
+            Node::Internal { depth, links } => {
+                let node = if *depth == 1 {
+                    Node::gen_leaf().anchor(value)
+                } else {
+                    Node::gen_internal(depth - 1).anchor(value)
+                };
+                Internal {
+                    depth: *depth,
+                    links: vec![Arc::new(node)],
+                }
+            }
+        }
+    }
+
+    fn push(&self, value: T) -> Self
+    where
+        T: Clone,
+    {
+        match self.info() {
+            Info::RightMostRoom => match self.view() {
+                Values(vs) => {
+                    let mut vs = vs.clone();
+                    vs.push(value);
+                    Leaf { values: vs }
+                }
+                Links(ls) => {
+                    let last = ls.last().unwrap().as_ref();
+                    let node = last.push(value);
+                    let mut ls = ls.clone();
+                    let last = ls.last_mut().unwrap();
+                    *last = Arc::new(node);
+                    Internal {
+                        depth: self.depth(),
+                        links: ls,
+                    }
+                }
+            },
+            Info::RoomInSelf => {
+                let mut links = self.links().expect(LINK_INVARIANT).clone();
+                if self.depth() == 1 {
+                    links.push(Arc::new(Node::gen_leaf().anchor(value)))
+                } else {
+                    links.push(Arc::new(
+                        Node::gen_internal(self.depth())
+                            .decrease_depth()
+                            .anchor(value),
+                    ))
+                }
+                Internal {
+                    depth: self.depth(),
+                    links,
+                }
+            }
+            Info::RoomInSubtree => {
+                let mut links = self.links().expect(LINK_INVARIANT).clone();
+                let new_link = links.pop().expect(INTERNAL_LINK_ERROR).push(value);
+                links.push(Arc::new(new_link));
+                Internal {
+                    depth: self.depth(),
+                    links,
+                }
+            }
+            Info::Full => match self {
+                Leaf { values: vs } => {
+                    let mut links = vec![
+                        Arc::new(Leaf { values: vs.clone() }),
+                        Arc::new(Leaf {
+                            values: vec![value],
+                        }),
+                    ];
+                    Internal { depth: 1, links }
+                }
+                Internal { depth, links: ls } => {
+                    let mut links = vec![
+                        Arc::new(Internal {
+                            depth: self.depth(),
+                            links: ls.clone(),
+                        }),
+                        Arc::new(Node::gen_internal(*depth).anchor(value)),
+                    ];
+                    Internal {
+                        depth: depth + 1,
+                        links,
+                    }
+                }
+            },
+        }
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for Node<T> {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        match self {
+            Leaf { values } => {
+                let end = values.len();
+                write!(f, "(")?;
+                for (i, value) in values.iter().enumerate() {
+                    write!(f, "{}", value)?;
+                    if i + 1 != end {
+                        write!(f, ",")?;
+                    }
+                }
+                write!(f, ")")?;
+            }
+            Internal { depth, links } => {
+                let end = links.len();
+                write!(f, "(")?;
+                for (i, link) in links.iter().enumerate() {
+                    write!(f, "{}", link)?;
+                    if i + 1 != end {
+                        write!(f, " ")?;
+                    }
+                }
+                write!(f, ")")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+type Link<T> = Arc<Node<T>>;
+
+#[derive(Debug, Clone)]
+pub struct Vector<T> {
+    length: usize,
+    root: Node<T>,
+}
+
+impl<T> Vector<T> {
+    pub fn len(&self) -> usize {
+        self.length
+    }
+
+    pub fn new() -> Vector<T> {
+        let primary = Leaf { values: vec![] };
+        Vector {
+            length: 0,
+            root: primary,
+        }
+    }
+    pub fn push(&self, value: T) -> Vector<T>
+    where
+        T: Clone,
+    {
+        Vector {
+            length: self.length + 1,
+            root: self.root.push(value),
+        }
+    }
+
+    pub fn get(&self, index: usize) -> Option<&T> {
+        self.root.get(index)
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    #[test]
+    fn update_leaf() -> Result<(), i32> {
+        let mut leaf1 = Leaf { values: vec![] };
+        let n: i32 = 100;
+        for value in 0..n {
+            leaf1 = leaf1.push(value);
+        }
+        for value in 0..n {
+            assert_eq!(Some(&value), leaf1.get(value as usize))
+        }
+        Ok(())
+    }
+
+    #[test]
+    fn vector() {
+        let mut v: Vector<i32> = Vector::new();
+        let n: i32 = 100000;
+        for value in 0..n {
+            v = v.push(value);
+        }
+        println!("{}", v.root);
+        for value in 0..n {
+            assert_eq!(Some(&value), v.get(value as usize))
+        }
+    }
+}
