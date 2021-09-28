@@ -41,6 +41,7 @@ fn run_file(file: String) {
         Ok(result) => println!("{:?}", result),
         Err(err) => println!("failure {:?}", err),
     }
+    println!("{:#?}", interpreter);
 }
 
 fn main() {

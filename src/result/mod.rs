@@ -13,6 +13,8 @@ pub mod runtime {
         NodeNotFound,
         InvalidNode,
         InvalidArgumentArity,
+        TagNodeMissMatch,
+        MissingNode,
         General(&'static str),
     }
 }

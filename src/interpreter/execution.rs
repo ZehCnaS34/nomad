@@ -1,6 +1,7 @@
 use super::operation::*;
 use super::value::*;
 use super::Interpreter;
+use super::NodeQuery;
 use crate::ast::node::*;
 use crate::interpreter::value::NativeFunction;
 use crate::result::runtime::ErrorKind;
@@ -34,12 +35,18 @@ impl Execute for Node {
             Node::String(node) => Ok(Value::String(String {
                 value: node.value().to_string(),
             })),
-            Node::Symbol(node) => Ok(Value::Symbol(Symbol::from_node(node.clone()))),
+            Node::Symbol(node) => node.execute(interpreter),
             Node::Vector(node) => node.execute(interpreter),
             Node::While(node) => node.execute(interpreter),
             Node::Macro(node) => node.execute(interpreter),
             Node::QuasiQuote(node) => node.execute(interpreter),
         }
+    }
+}
+
+impl Execute for SymbolNode {
+    fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
+        Ok(Value::Symbol(Symbol::from_node(self.clone())))
     }
 }
 
@@ -146,18 +153,7 @@ impl Execute for FunctionCallNode {
         let function = interpreter.interpret_and_resolve_tag(self.function())?;
         match function {
             Value::Function(function) => {
-                let parameters = {
-                    let mut parameters = vec![];
-                    for tag in function.parameters {
-                        parameters.push(
-                            interpreter
-                                .interpret_tag(tag)?
-                                .take_symbol()
-                                .ok_or(ErrorKind::InvalidNode)?,
-                        );
-                    }
-                    parameters.into_iter()
-                };
+                let parameters = function.parameters.into_iter();
                 let arguments = {
                     let mut arguments = vec![];
                     for tag in self.arguments() {
@@ -364,24 +360,33 @@ impl Execute for FunctionCallNode {
     }
 }
 
+fn all_symbols(parameters: &VectorNode) -> bool {
+    parameters.items().iter().all(|item| item.is_symbol())
+}
+
 impl Execute for FunctionNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
-        todo!("fix me");
-        // Ok(if let Some(name) = self.name() {
-        //     let name = interpreter.interpret_tag(name)?;
-        //     let name = name.take_symbol().ok_or(ErrorKind::NodeNotFound);
-        //     let value = Value::Function(Function {
-        //         name: None,
-        //         parameters: self.parameters(),
-        //         body: self.body(),
-        //     });
-        //     value
-        // } else {
-        //     Value::Function(Function {
-        //         name: None,
-        //         parameters: self.parameters(),
-        //         body: self.body(),
-        //     })
-        // })
+        let parameter_nodes = interpreter.get_vector(self.parameters())?;
+        if all_symbols(&parameter_nodes) {
+            let parameters: Vec<_> = interpreter
+                .get_symbols(&parameter_nodes.items())?
+                .iter()
+                .flat_map(|node| {
+                    node.execute(interpreter).ok().and_then(|value| value.take_symbol())
+                })
+                .collect();
+            Ok(Value::Function(Function {
+                name: {
+                    self.name()
+                        .and_then(|name| interpreter.get_symbol(name).ok())
+                        .and_then(|symbol_node| symbol_node.execute(interpreter).ok())
+                        .and_then(|value| value.take_symbol())
+                },
+                parameters,
+                body: self.body(),
+            }))
+        } else {
+            todo!("handle destructing and variadic parameters")
+        }
     }
 }

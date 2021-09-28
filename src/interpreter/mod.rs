@@ -1,8 +1,14 @@
-use super::ast::{node, node::Node, parser::AST, Tag};
-use super::result::runtime::ErrorKind;
-use super::result::RuntimeResult;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
+
+use super::ast::node;
+use super::ast::node::Node;
+use super::ast::node::SymbolNode;
+use super::ast::node::VectorNode;
+use super::ast::parser::AST;
+use super::ast::Tag;
+use super::result::runtime::ErrorKind;
+use super::result::RuntimeResult;
 
 mod context;
 mod execution;
@@ -23,6 +29,38 @@ use value::String;
 use value::Symbol;
 use value::Value;
 use value::Var;
+
+pub trait NodeQuery {
+    fn get_vector(&self, tag: Tag) -> RuntimeResult<VectorNode>;
+    fn get_symbol(&self, tags: Tag) -> RuntimeResult<SymbolNode>;
+    fn get_symbols(&self, tags: &Vec<Tag>) -> RuntimeResult<Vec<SymbolNode>>;
+}
+
+impl NodeQuery for Interpreter {
+    fn get_vector(&self, tag: Tag) -> RuntimeResult<VectorNode> {
+        if let Node::Vector(node) = self.get_node(tag)? {
+            Ok(node)
+        } else {
+            Err(ErrorKind::MissingNode)
+        }
+    }
+
+    fn get_symbol(&self, tag: Tag) -> RuntimeResult<SymbolNode> {
+        if let Node::Symbol(node) = self.get_node(tag)? {
+            Ok(node)
+        } else {
+            Err(ErrorKind::MissingNode)
+        }
+    }
+
+    fn get_symbols(&self, tags: &Vec<Tag>) -> RuntimeResult<Vec<SymbolNode>> {
+        let mut symbols = vec![];
+        for tag in tags {
+            symbols.push(self.get_symbol(*tag)?);
+        }
+        Ok(symbols)
+    }
+}
 
 #[derive(Debug)]
 pub struct Interpreter {

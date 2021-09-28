@@ -4,7 +4,7 @@ use crate::ast::Tag;
 #[derive(Debug, Clone)]
 pub struct Function {
     pub name: Option<Symbol>,
-    pub parameters: Vec<Tag>,
+    pub parameters: Vec<Symbol>,
     pub body: Vec<Tag>,
 }
 
