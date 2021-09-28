@@ -3,11 +3,11 @@ use super::value::*;
 use super::Interpreter;
 use super::NodeQuery;
 use crate::ast::node::*;
+use crate::ast::tag::Partition;
 use crate::interpreter::value::NativeFunction;
 use crate::result::runtime::ErrorKind;
 use crate::result::RuntimeResult;
 use std::time::{SystemTime, UNIX_EPOCH};
-use crate::ast::tag::Partition;
 
 pub trait Execute {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value>;
@@ -182,10 +182,13 @@ impl Execute for FunctionCallNode {
             }
             Value::NativeFunction(native) => match native {
                 NativeFunction::Get => {
-                    let arguments: Vec<_> =  self.arguments().iter().flat_map(|tag| {
-                        interpreter.interpret_and_resolve_tag(*tag)
-                    }).collect();
-                    let (object, key, rest) = arguments.take_2().ok_or(ErrorKind::InvalidOperation)?;
+                    let arguments: Vec<_> = self
+                        .arguments()
+                        .iter()
+                        .flat_map(|tag| interpreter.interpret_and_resolve_tag(*tag))
+                        .collect();
+                    let (object, key, rest) =
+                        arguments.take_2().ok_or(ErrorKind::InvalidOperation)?;
                     object.lookup(key).map(|value| value.clone())
                 }
                 NativeFunction::Now => {

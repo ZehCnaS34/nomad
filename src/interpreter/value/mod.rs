@@ -1,3 +1,7 @@
+use crate::interpreter::operation::Lookup;
+use crate::result::runtime::ErrorKind as Error;
+use crate::result::RuntimeResult as Result;
+
 mod boolean;
 mod function;
 mod hash_map;
@@ -10,6 +14,7 @@ mod var;
 mod vector;
 
 use std::fmt;
+use std::str::FromStr;
 use std::sync::Arc;
 
 pub use boolean::Boolean;
@@ -20,8 +25,6 @@ pub use string::String;
 pub use symbol::Symbol;
 pub use var::Var;
 pub use vector::Vector;
-use crate::interpreter::operation::Lookup;
-use crate::result::runtime::ErrorKind;
 
 pub const NIL: Value = Value::Nil;
 
@@ -41,14 +44,14 @@ pub enum Value {
 impl Lookup for Value {
     type Item = Value;
     type Key = Value;
-    type Err = ErrorKind;
+    type Err = Error;
 
-    fn lookup(&self, key: Self::Key) -> Result<&Self::Item, ErrorKind> {
+    fn lookup(&self, key: Self::Key) -> Result<&Self::Item> {
         match (self, key) {
             (Value::Vector(vector), Value::Number(number)) => vector.lookup(number),
             (left, right) => {
                 println!("left {} {}", left, right);
-                Err(ErrorKind::General("un supported lookup"))
+                Err(Error::General("un supported lookup"))
             }
         }
     }

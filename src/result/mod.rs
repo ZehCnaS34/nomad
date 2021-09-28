@@ -9,6 +9,7 @@ pub mod runtime {
     #[derive(Debug)]
     pub enum ErrorKind {
         NotDefined,
+        InvalidNamespace,
         InvalidOperation,
         NodeNotFound,
         InvalidNode,
@@ -16,6 +17,7 @@ pub mod runtime {
         BindingNotFound,
         TagNodeMissMatch,
         MissingNode,
+        StorageIssue,
         General(&'static str),
     }
 }

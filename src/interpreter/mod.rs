@@ -1,14 +1,14 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 
-use super::ast::node;
-use super::ast::node::Node;
-use super::ast::node::SymbolNode;
-use super::ast::node::VectorNode;
-use super::ast::parser::AST;
-use super::ast::Tag;
-use super::result::runtime::ErrorKind;
-use super::result::RuntimeResult;
+use crate::ast::node;
+use crate::ast::node::Node;
+use crate::ast::node::SymbolNode;
+use crate::ast::node::VectorNode;
+use crate::ast::parser::AST;
+use crate::ast::Tag;
+use crate::result::runtime::ErrorKind;
+use crate::result::RuntimeResult;
 
 mod context;
 mod execution;
@@ -17,9 +17,14 @@ mod operation;
 mod value;
 
 use context::Context;
+use context::Dump;
 use execution::Execute;
 
-pub use operation::{Compare, Concat, Introspection, Length, Math};
+pub use operation::Compare;
+pub use operation::Concat;
+pub use operation::Introspection;
+pub use operation::Length;
+pub use operation::Math;
 
 use value::Boolean;
 use value::Function;
@@ -97,6 +102,7 @@ impl Interpreter {
             context.define("=", Eq);
             context.define("mod", Mod);
             context.define("<", LessThan);
+            // TODO: Convert to macro when that system is inplace.
             context.define("or", Or);
             context.define(">", GreaterThan);
             context.define("+", Plus);
@@ -228,7 +234,7 @@ impl Interpreter {
     }
 
     pub fn define(&self, symbol: Symbol, value: Value) -> RuntimeResult<Value> {
-        Ok(Value::Var(self.context.define(symbol.clone(), value)))
+        self.context.define(symbol.clone(), value).map(Value::Var)
     }
 
     pub fn set(&self, symbol: Symbol, value: Value) {
