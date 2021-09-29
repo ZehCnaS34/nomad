@@ -85,6 +85,13 @@ impl Node {
         }
     }
 
+    pub fn as_vector(&self) -> Option<&VectorNode> {
+        match self {
+            Node::Vector(node) => Some(node),
+            _ => None,
+        }
+    }
+
     pub fn take_vector(self) -> Option<VectorNode> {
         match self {
             Node::Vector(node) => Some(node),

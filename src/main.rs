@@ -5,16 +5,17 @@ extern crate lazy_static;
 extern crate prettytable;
 #[macro_use]
 pub mod ast;
+pub mod emitter;
 pub mod interpreter;
 pub mod result;
 
-use crate::result::RuntimeResult as Result;
-use crate::result::parser::ErrorKind as PEK;
-use crate::result::scanner::ErrorKind as SEK;
-use crate::result::runtime::ErrorKind as REK;
 use crate::ast::parser;
 use crate::ast::parser::parse;
 use crate::ast::scanner::Scanner;
+use crate::result::parser::ErrorKind as PEK;
+use crate::result::runtime::ErrorKind as REK;
+use crate::result::scanner::ErrorKind as SEK;
+use crate::result::RuntimeResult as Result;
 use std::cell::Cell;
 use std::fs::read_to_string;
 use std::io;
@@ -28,17 +29,22 @@ struct MainResult;
 fn run_repl() {}
 
 impl From<SEK> for REK {
-    fn from(_: SEK) -> Self { todo!() }
+    fn from(_: SEK) -> Self {
+        todo!()
+    }
 }
 
 impl From<PEK> for REK {
-    fn from(_: PEK) -> Self { todo!() }
+    fn from(_: PEK) -> Self {
+        todo!()
+    }
 }
 
 impl From<io::ErrorKind> for REK {
-    fn from(_: io::ErrorKind) -> Self { todo!() }
+    fn from(_: io::ErrorKind) -> Self {
+        todo!()
+    }
 }
-
 
 macro_rules! take {
     ($value:expr) => {
@@ -53,12 +59,11 @@ fn run_file(file: String) -> Result<()> {
     let source = read_to_string(file).ok().ok_or(REK::General("Fuck"))?;
     let tokens = Scanner::scan(source).ok_or(REK::General("Fuck"))?;
     let ast = parse(tokens)?;
-    let mut interpreter = interpreter::Interpreter::new();
-    let result = interpreter.eval(ast)?;
-    match interpreter.eval(ast) {
-        Ok(result) => println!("{}", result),
-        Err(err) => println!("failure {:?}", err),
-    }
+    let source = emitter::emit(&ast).ok_or(REK::General(("Fuck")))?;
+    println!("source {:?}", source);
+    // let mut interpreter = interpreter::Interpreter::new();
+    // let result = interpreter.eval(ast)?;
+    Ok(())
 }
 
 fn main() {
