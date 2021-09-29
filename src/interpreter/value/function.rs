@@ -76,21 +76,61 @@ native_function! {
         Err(General("fuck"))
     }
 }
-native_function! { Divide(parameters, int) ("/", Arity::Any) : {Err(General("fuck")) }}
-native_function! { Modulus(parameters, int) ("mod", Arity::Fixed(2)) : {Err(General("fuck")) }}
-
-native_function! { Equal(parameters, int) ("=", Arity::Any) : {Err(General("fuck")) }}
-native_function! { LessThan(parameters, int) ("<", Arity::Any) : {Err(General("fuck")) }}
-native_function! { GreaterThan(parameters, int) (">", Arity::Any) : {Err(General("fuck")) }}
-
-native_function! { Println(parameters, int) ("println", Arity::Any) : {Err(General("fuck")) }}
-native_function! { Print(parameters, int) ("print", Arity::Any) : {Err(General("fuck")) }}
-
-native_function! { Conj(parameters, int) ("conj", Arity::Fixed(2)) : {Err(General("fuck")) }}
-native_function! { Get(parameters, int) ("get", Arity::Or(2, 3)) : {Err(General("fuck")) }}
-native_function! { Count(parameters, int) ("count", Arity::Fixed(1)) : {Err(General("fuck")) }}
-
-native_function! { Now(parameters, int) ("now", Arity::None) : {Err(General("fuck")) }}
+native_function! {
+    Divide(parameters, int) ("/", Arity::Any) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    Modulus(parameters, int) ("mod", Arity::Fixed(2)) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    Equal(parameters, int) ("=", Arity::Any) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    LessThan(parameters, int) ("<", Arity::Any) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    GreaterThan(parameters, int) (">", Arity::Any) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    Println(parameters, int) ("println", Arity::Any) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    Print(parameters, int) ("print", Arity::Any) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    Conj(parameters, int) ("conj", Arity::Fixed(2)) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    Get(parameters, int) ("get", Arity::Or(2, 3)) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    Count(parameters, int) ("count", Arity::Fixed(1)) : {
+        Err(General("fuck"))
+    }
+}
+native_function! {
+    Now(parameters, int) ("now", Arity::None) : {
+        Err(General("fuck"))
+    }
+}
 
 pub mod nf {
     pub use super::{
@@ -100,8 +140,8 @@ pub mod nf {
 }
 
 impl<T> From<T> for Value
-where
-    T: Function + 'static,
+    where
+        T: Function + 'static,
 {
     fn from(f: T) -> Value {
         Value::Function(Arc::new(f))

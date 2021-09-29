@@ -166,7 +166,7 @@ impl<T> Node<T> {
             Node::Internal { depth, .. } => *depth,
         }
     }
-    
+
     fn mask(&self, key: usize) -> usize {
         let offset = BITS * self.depth();
         let mask = MASK << offset;
