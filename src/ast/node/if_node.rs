@@ -7,11 +7,11 @@ use crate::result::parser::ErrorKind::General;
 use crate::result::ParseResult;
 use std::fmt;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct IfNode {
-    pub condition: Tag,
-    pub true_branch: Tag,
-    pub false_branch: Tag,
+    pub condition: Box<Node>,
+    pub true_branch: Box<Node>,
+    pub false_branch: Box<Node>,
 }
 
 impl fmt::Display for IfNode {
@@ -25,12 +25,12 @@ impl fmt::Display for IfNode {
 }
 
 impl ToNode for IfNode {
-    fn make_node(tags: Vec<Tag>) -> ParseResult<Node> {
+    fn make_node(tags: Vec<Node>) -> ParseResult<Node> {
         let (_, condition, true_branch, false_branch, _) = tags.take_4().ok_or(General("Wow"))?;
         Ok(Node::If(IfNode {
-            condition,
-            true_branch,
-            false_branch,
+            condition: Box::new(condition),
+            true_branch: Box::new(true_branch),
+            false_branch: Box::new(false_branch),
         }))
     }
 }

@@ -13,8 +13,9 @@ pub struct MetaNode {
 impl MetaNode {}
 
 impl ToNode for MetaNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
-        let (data, target, _) = tags.take_2().ok_or(General("Failed"))?;
-        Ok(Node::Meta(MetaNode { data, target }))
+    fn make_node(tags: Vec<Node>) -> Result<Node, ErrorKind> {
+        todo!()
+        // let (data, target, _) = tags.take_2().ok_or(General("Failed"))?;
+        // Ok(Node::Meta(MetaNode { data, target }))
     }
 }

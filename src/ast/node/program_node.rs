@@ -5,17 +5,14 @@ use crate::result::parser::ErrorKind;
 
 #[derive(Debug, Clone)]
 pub struct ProgramNode {
-    expressions: Vec<Tag>,
+    expressions: Vec<Node>,
 }
 
 impl ProgramNode {
-    pub fn expressions(&self) -> Vec<Tag> {
-        self.expressions.iter().map(Clone::clone).collect()
+    pub fn new(expressions: Vec<Node>) -> ProgramNode {
+        ProgramNode { expressions }
     }
-}
-
-impl ToNode for ProgramNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
-        Ok(Node::Program(ProgramNode { expressions: tags }))
+    pub fn expressions(&self) -> &Vec<Node> {
+        &self.expressions
     }
 }

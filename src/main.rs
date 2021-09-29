@@ -59,8 +59,7 @@ fn run_file(file: String) -> Result<()> {
     let source = read_to_string(file).ok().ok_or(REK::General("Fuck"))?;
     let tokens = Scanner::scan(source).ok_or(REK::General("Fuck"))?;
     let ast = parse(tokens)?;
-    let source = emitter::emit(&ast).ok_or(REK::General(("Fuck")))?;
-    println!("source {:?}", source);
+    println!("{:#?}", ast);
     // let mut interpreter = interpreter::Interpreter::new();
     // let result = interpreter.eval(ast)?;
     Ok(())

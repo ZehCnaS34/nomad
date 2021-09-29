@@ -23,9 +23,7 @@ impl DefinitionNode {
 }
 
 impl ToNode for DefinitionNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
-        let (_, ident, value, _) = tags.take_3().ok_or(ErrorKind::General("Failed"))?;
-        let def = DefinitionNode { ident, value };
-        Ok(Node::Definition(def))
+    fn make_node(tags: Vec<Node>) -> Result<Node, ErrorKind> {
+        todo!()
     }
 }

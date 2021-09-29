@@ -3,20 +3,26 @@ use crate::ast::node::ToNode;
 use crate::ast::Tag;
 use crate::interpreter::Interpreter;
 use crate::result::parser::ErrorKind;
+use std::convert::TryFrom;
 
 #[derive(Debug, Clone)]
 pub struct VectorNode {
-    items: Vec<Tag>,
+    items: Vec<Node>,
 }
 
-impl VectorNode {
-    pub fn items(&self) -> Vec<Tag> {
-        self.items.iter().map(Clone::clone).collect()
+impl TryFrom<Vec<Node>> for VectorNode {
+    type Error = ErrorKind;
+    fn try_from(items: Vec<Node>) -> Result<Self, Self::Error> {
+        Ok(VectorNode { items })
     }
 }
 
-impl ToNode for VectorNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
-        Ok(Node::Vector(VectorNode { items: tags }))
+impl VectorNode {
+    pub fn new(items: Vec<Node>) -> VectorNode {
+        println!("vecotr.items {:?}", items);
+        VectorNode { items }
+    }
+    pub fn items(&self) -> &Vec<Node> {
+        self.items().as_ref()
     }
 }

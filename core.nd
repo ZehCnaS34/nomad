@@ -1,4 +1,6 @@
 (fn name [hello]
-    (fn [] nil)
-    (fn [] nil)
-)
+    (if [1 2 3]
+        (println "hi")
+        (println "fuck")))
+
+(conj env "simple")

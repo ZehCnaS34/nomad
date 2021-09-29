@@ -7,18 +7,17 @@ use crate::result::parser::ErrorKind::General;
 
 #[derive(Debug, Clone)]
 pub struct DoNode {
-    expressions: Vec<Tag>,
+    expressions: Vec<Node>,
 }
 
 impl DoNode {
-    pub fn expressions(&self) -> Vec<Tag> {
-        self.expressions.iter().map(Clone::clone).collect()
+    pub fn expressions(&self) -> &Vec<Node> {
+        self.expressions.as_ref()
     }
 }
 
 impl ToNode for DoNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
-        let (_, expressions) = tags.take_1().ok_or(General("Failed"))?;
-        Ok(Node::Do(DoNode { expressions }))
+    fn make_node(tags: Vec<Node>) -> Result<Node, ErrorKind> {
+        todo!()
     }
 }

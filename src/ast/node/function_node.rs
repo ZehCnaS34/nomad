@@ -1,10 +1,10 @@
 use std::any::Any;
 use std::fmt;
 
-use crate::ast::node::{Node, ToNode};
+use crate::ast::node::{Node, SymbolNode, ToNode, VectorNode};
 use crate::ast::tag::Partition;
 use crate::result::parser;
-use crate::result::parser::ErrorKind::General;
+use crate::result::runtime::ErrorKind::General;
 use crate::{ast, ast::Tag};
 
 trait Show {
@@ -15,86 +15,72 @@ trait Show {
 
 #[derive(Debug, Clone)]
 pub struct FunctionCallNode {
-    function: Tag,
-    arguments: Vec<Tag>,
+    function: Box<Node>,
+    arguments: Vec<Node>,
 }
 
 impl ToNode for FunctionCallNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, parser::ErrorKind> {
-        let mut tags = tags.into_iter();
-        Ok(Node::FunctionCall(FunctionCallNode {
-            function: tags.next().ok_or(parser::ErrorKind::CouldNotParseAtom)?,
-            arguments: tags.collect(),
+    fn make_node(nodes: Vec<Node>) -> Result<Node, parser::ErrorKind> {
+        let (function, arguments) = nodes.take_1().unwrap();
+        Ok(Node::FunctionCall(FunctionCallNode{
+            function: Box::new(function),
+            arguments,
         }))
     }
 }
 
 impl FunctionCallNode {
     pub fn function(&self) -> Tag {
-        self.function
+        todo!()
     }
     pub fn arguments(&self) -> Vec<Tag> {
-        self.arguments.iter().map(Clone::clone).collect()
+        todo!()
     }
 }
 
 #[derive(Debug, Clone)]
 pub enum FunctionNode {
     Named {
-        name: Tag,
-        parameters: Tag,
-        body: Vec<Tag>,
+        name: SymbolNode,
+        parameters: VectorNode,
+        body: Vec<Node>,
     },
     Anonymous {
-        parameters: Tag,
-        body: Vec<Tag>,
+        parameters: VectorNode,
+        body: Vec<Node>,
     },
 }
 
 impl ToNode for FunctionNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, parser::ErrorKind> {
-        let (_, name_or_args, args_or_first, mut body) = tags.take_3().ok_or(General("Failed"))?;
-        let function = if name_or_args.is_symbol() {
-            FunctionNode::Named {
-                name: name_or_args,
-                parameters: args_or_first,
-                body,
-            }
-        } else {
-            FunctionNode::Anonymous {
-                parameters: name_or_args,
-                body: {
-                    body.insert(0, args_or_first);
-                    body
+    fn make_node(tags: Vec<Node>) -> Result<Node, parser::ErrorKind> {
+        let (form, name_or_params, params_or_first_body, body) = tags.take_3().unwrap();
+        Ok(Node::Function(
+            match (name_or_params, params_or_first_body) {
+                (Node::Symbol(name), Node::Vector(parameters)) => FunctionNode::Named {
+                    name,
+                    parameters,
+                    body,
                 },
-            }
-        };
-        Ok(Node::Function(function))
+                (Node::Vector(parameters), node) => FunctionNode::Anonymous {
+                    parameters,
+                    body: vec![vec![node], body].concat(),
+                },
+                (_, _) => return Err(parser::ErrorKind::General("fuck")),
+            },
+        ))
     }
 }
 
 impl FunctionNode {
     pub fn parameters(&self) -> Tag {
-        match self {
-            FunctionNode::Anonymous { parameters, .. } => *parameters,
-            FunctionNode::Named { parameters, .. } => *parameters,
-        }
+        todo!()
     }
 
     pub fn body(&self) -> Vec<Tag> {
-        match self {
-            FunctionNode::Anonymous { body, .. } => body,
-            FunctionNode::Named { body, .. } => body,
-        }
-        .iter()
-        .map(Clone::clone)
-        .collect()
+        todo!()
     }
 
     pub fn name(&self) -> Option<Tag> {
-        match self {
-            FunctionNode::Anonymous { .. } => None,
-            FunctionNode::Named { name, .. } => Some(*name),
-        }
+        todo!()
     }
 }

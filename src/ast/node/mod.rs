@@ -74,7 +74,7 @@ pub enum Node {
 }
 
 pub trait ToNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, crate::result::parser::ErrorKind>;
+    fn make_node(tags: Vec<Node>) -> Result<Node, crate::result::parser::ErrorKind>;
 }
 
 impl Node {

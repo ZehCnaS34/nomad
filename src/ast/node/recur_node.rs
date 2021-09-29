@@ -14,8 +14,9 @@ pub struct RecurNode {
 impl RecurNode {}
 
 impl ToNode for RecurNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, ErrorKind> {
-        let (_, bindings) = tags.take_1().ok_or(General("Failed"))?;
-        Ok(Node::Recur(RecurNode { bindings }))
+    fn make_node(tags: Vec<Node>) -> Result<Node, ErrorKind> {
+        // let (_, bindings) = tags.take_1().ok_or(General("Failed"))?;
+        todo!()
+        // Ok(Node::Recur(RecurNode { bindings }))
     }
 }

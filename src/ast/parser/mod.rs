@@ -1,5 +1,6 @@
 use std::cell::Cell;
 use std::collections::{HashMap, VecDeque};
+use std::convert::TryFrom;
 use std::fmt;
 use std::fmt::Formatter;
 use std::str::FromStr;
@@ -78,36 +79,8 @@ impl Parser {
         ast.get(&tag).cloned()
     }
 
-    fn submit(&self, node: n::Node) -> Result<Tag> {
-        let mut ast = self.ast.lock().expect("Could not lock thread");
-        let tag = match &node {
-            n::Node::Nil => TagKind::Nil,
-            n::Node::Boolean(..) => TagKind::Boolean,
-            n::Node::Number(..) => TagKind::Number,
-            n::Node::String(..) => TagKind::String,
-            n::Node::Symbol(..) => TagKind::Symbol,
-            n::Node::Definition(..) => TagKind::Definition,
-            n::Node::Do(..) => TagKind::Do,
-            n::Node::FunctionCall(..) => TagKind::Call,
-            n::Node::Function(..) => TagKind::Function,
-            n::Node::If(..) => TagKind::If,
-            n::Node::Program(..) => TagKind::Program,
-            n::Node::Vector(..) => TagKind::Vector,
-            n::Node::While(..) => TagKind::While,
-            n::Node::Loop(..) => TagKind::Loop,
-            n::Node::Recur(..) => TagKind::Recur,
-            n::Node::Meta(..) => TagKind::Meta,
-            n::Node::Quote(..) => TagKind::Quote,
-            n::Node::Decorator(..) => TagKind::Decorator,
-            n::Node::Let(..) => TagKind::Let,
-            n::Node::Macro(..) => TagKind::Macro,
-            n::Node::QuasiQuote(..) => TagKind::QuasiQuote,
-            n::Node::List(..) => todo!("list"),
-            n::Node::Keyword(..) => todo!("keyword"),
-        }
-        .reify(ast.len());
-        ast.insert(tag, node);
-        return Ok(tag);
+    fn submit(&self, node: n::Node) -> Result<n::Node> {
+        return Ok(node);
     }
 
     fn next(&self) {
@@ -125,31 +98,26 @@ impl Parser {
         Ok(result)
     }
 
-    fn special_form(&self, tag: Tag) -> Form {
-        if let Some(tag) = tag.on_symbol() {
-            let ast = self.ast.lock().expect("Failed to lock ast mutex");
-            if let Some(symbol) = ast.nodes.get(tag).and_then(n::Node::as_symbol) {
-                match symbol.name() {
-                    "def" if !symbol.is_qualified() => Form::Def,
-                    "loop" if !symbol.is_qualified() => Form::Loop,
-                    "recur" if !symbol.is_qualified() => Form::Recur,
-                    "while" if !symbol.is_qualified() => Form::While,
-                    "if" if !symbol.is_qualified() => Form::If,
-                    "do" if !symbol.is_qualified() => Form::Do,
-                    "fn" if !symbol.is_qualified() => Form::Fn,
-                    "let*" if !symbol.is_qualified() => Form::Let,
-                    "defmacro" if !symbol.is_qualified() => Form::Macro,
-                    _ => Form::Call,
-                }
-            } else {
-                Form::Call
+    fn special_form(&self, node: &n::Node) -> Form {
+        if let Some(node) = node.as_symbol() {
+            match node.name() {
+                "def" if !node.is_qualified() => Form::Def,
+                "loop" if !node.is_qualified() => Form::Loop,
+                "recur" if !node.is_qualified() => Form::Recur,
+                "while" if !node.is_qualified() => Form::While,
+                "if" if !node.is_qualified() => Form::If,
+                "do" if !node.is_qualified() => Form::Do,
+                "fn" if !node.is_qualified() => Form::Fn,
+                "let*" if !node.is_qualified() => Form::Let,
+                "defmacro" if !node.is_qualified() => Form::Macro,
+                _ => Form::Call,
             }
         } else {
             Form::Call
         }
     }
 
-    fn take_until(&self, kind: Kind) -> Result<Vec<Tag>> {
+    fn take_until(&self, kind: Kind) -> Result<Vec<n::Node>> {
         let mut nodes = Vec::new();
         loop {
             let token = self.peek().ok_or(Error::UnexpectedEof)?;
@@ -162,12 +130,10 @@ impl Parser {
         Ok(nodes)
     }
 
-    fn nested(&self) -> Result<Tag> {
+    fn nested(&self) -> Result<n::Node> {
         let mut tags = self.take_until(Kind::RightParen)?;
-        let first = tags[0];
-        // println!("tags {:?}", tags);
 
-        self.submit(match self.special_form(first) {
+        self.submit(match self.special_form(&tags[0]) {
             Form::Call => n::FunctionCallNode::make_node(tags),
             Form::While => n::WhileNode::make_node(tags),
             Form::If => n::IfNode::make_node(tags),
@@ -184,50 +150,52 @@ impl Parser {
         }?)
     }
 
-    fn vector(&self) -> Result<Tag> {
-        self.submit(n::VectorNode::make_node(
+    fn vector(&self) -> Result<n::Node> {
+        Ok(n::Node::Vector(n::VectorNode::try_from(
             self.take_until(Kind::RightBracket)?,
-        )?)
+        )?))
     }
 
-    fn escape_list(&self) -> Result<Tag> {
-        let item = self.expression()?;
-        self.submit(n::Node::QuasiQuote(n::QuasiQuoteNode::from_tag(item)))
-    }
+    // fn escape_list(&self) -> Result<Tag> {
+    //     let item = self.expression()?;
+    //     self.submit(n::Node::QuasiQuote(n::QuasiQuoteNode::from_tag(item)))
+    // }
 
-    fn unquote(&self) -> Result<Tag> {
-        let tag = self.expression()?;
-        self.submit(n::Node::Quote(QuoteNode::from_tag(tag)))
-    }
+    // fn unquote(&self) -> Result<Tag> {
+    //     let tag = self.expression()?;
+    //     self.submit(n::Node::Quote(QuoteNode::from_tag(tag)))
+    // }
 
-    fn quote(&self) -> Result<Tag> {
-        let expression = self.expression()?;
-        self.submit(n::Node::Quote(n::QuoteNode::from_tag(expression)))
-    }
+    // fn quote(&self) -> Result<Tag> {
+    //     let expression = self.expression()?;
+    //     self.submit(n::Node::Quote(n::QuoteNode::from_tag(expression)))
+    // }
 
-    fn carrot(&self) -> Result<Tag> {
-        self.submit(n::MetaNode::make_node(vec![
-            self.expression()?,
-            self.expression()?,
-        ])?)
-    }
+    // fn carrot(&self) -> Result<Tag> {
+    //     self.submit(n::MetaNode::make_node(vec![
+    //         self.expression()?,
+    //         self.expression()?,
+    //     ])?)
+    // }
 
-    fn decorator(&self) -> Result<Tag> {
-        self.submit(n::DecoratorNode::make_node(vec![
-            self.expression()?,
-            self.expression()?,
-        ])?)
-    }
+    // fn decorator(&self) -> Result<Tag> {
+    //     self.submit(n::DecoratorNode::make_node(vec![
+    //         self.expression()?,
+    //         self.expression()?,
+    //     ])?)
+    // }
 
-    fn expression(&self) -> Result<Tag> {
+    fn expression(&self) -> Result<n::Node> {
         let token = self.take()?;
         match token.kind {
-            Kind::Symbol => match &token.lexeme[..] {
-                "nil" => self.submit(n::Node::Nil),
-                "true" => self.submit(n::Node::Boolean(n::BooleanNode(true))),
-                "false" => self.submit(n::Node::Boolean(n::BooleanNode(false))),
-                lexeme => self.submit(n::Node::Symbol(n::SymbolNode::from(lexeme))),
-            },
+            Kind::Symbol => {
+                match &token.lexeme[..] {
+                    "nil" => self.submit(n::Node::Nil),
+                    "true" => self.submit(n::Node::Boolean(n::BooleanNode(true))),
+                    "false" => self.submit(n::Node::Boolean(n::BooleanNode(false))),
+                    lexeme => self.submit(n::Node::Symbol(n::SymbolNode::from(lexeme))),
+                }
+            }
             Kind::Number => {
                 let number: f64 = (&token.lexeme[..]).parse().expect("Failed to parse number");
                 self.submit(n::Node::Number(n::NumberNode(number)))
@@ -236,21 +204,20 @@ impl Parser {
                 let lexeme = &token.lexeme[..];
                 self.submit(n::Node::String(n::StringNode::from(lexeme)))
             }
-            Kind::Carrot => self.carrot(),
-            Kind::Quote => self.quote(),
-            Kind::Hash => self.decorator(),
+            // Kind::Carrot => self.carrot(),
+            // Kind::Quote => self.quote(),
+            // Kind::Hash => self.decorator(),
             Kind::LeftParen => self.nested(),
             Kind::LeftBracket => self.vector(),
-            Kind::BackTick => self.escape_list(),
-            Kind::Unquote => self.unquote(),
+            // Kind::BackTick => self.escape_list(),
+            // Kind::Unquote => self.unquote(),
             kind => {
-                println!("{:#?}", self);
                 todo!("{:?}", kind);
             }
         }
     }
 
-    fn program(&self) -> Result<Tag> {
+    fn program(&self) -> Result<n::Node> {
         let mut expressions = Vec::new();
         while let Some(token) = self.peek() {
             match token.kind {
@@ -261,15 +228,16 @@ impl Parser {
                     break;
                 }
                 _kind => {
-                    expressions.push(self.expression()?);
+                    let e = self.expression()?;
+                    expressions.push(e);
                 }
             }
         }
-        self.submit(n::ProgramNode::make_node(expressions)?)
+        self.submit(n::Node::Program(n::ProgramNode::new(expressions)))
     }
 }
 
-pub fn parse(tokens: Vec<Token>) -> Result<AST> {
+pub fn parse(tokens: Vec<Token>) -> Result<n::Node> {
     let mut parser = Parser {
         ast: Mutex::new(AST::new()),
         position: Cell::new(0),
@@ -279,7 +247,5 @@ pub fn parse(tokens: Vec<Token>) -> Result<AST> {
             .collect(),
     };
 
-    parser.program();
-
-    Ok(parser.ast.into_inner().unwrap())
+    return parser.program();
 }

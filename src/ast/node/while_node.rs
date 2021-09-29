@@ -12,9 +12,10 @@ pub struct WhileNode {
 }
 
 impl ToNode for WhileNode {
-    fn make_node(tags: Vec<Tag>) -> Result<Node, parser::ErrorKind> {
-        let (_, condition, body) = tags.take_2().ok_or(parser::ErrorKind::CouldNotParseAtom)?;
-        Ok(Node::While(WhileNode { condition, body }))
+    fn make_node(tags: Vec<Node>) -> Result<Node, parser::ErrorKind> {
+        todo!()
+        // let (_, condition, body) = tags.take_2().ok_or(parser::ErrorKind::CouldNotParseAtom)?;
+        // Ok(Node::While(WhileNode { condition, body }))
     }
 }
 

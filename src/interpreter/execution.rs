@@ -75,7 +75,8 @@ impl Execute for VectorNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
         let mut vector = Vector::new();
         for tag in self.items() {
-            let value = interpreter.interpret_and_resolve_tag(tag)?;
+            let value = tag.execute(interpreter)?;
+            todo!("resolve symbols in vector");
             vector = vector.push(value);
         }
         Ok(Value::Vector(vector))
@@ -86,7 +87,7 @@ impl Execute for ProgramNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
         let mut result = Value::Nil;
         for tag in self.expressions() {
-            result = interpreter.interpret_tag(tag)?;
+            result = tag.execute(interpreter)?;
         }
         Ok(result)
     }
@@ -94,13 +95,11 @@ impl Execute for ProgramNode {
 
 impl Execute for IfNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
-        if interpreter
-            .interpret_and_resolve_tag(self.condition)?
-            .truthy()
+        if self.condition.execute(interpreter)?.truthy()
         {
-            interpreter.interpret_and_resolve_tag(self.true_branch)
+            self.true_branch.execute(interpreter)
         } else {
-            interpreter.interpret_and_resolve_tag(self.false_branch)
+            self.false_branch.execute(interpreter)
         }
     }
 }
@@ -148,7 +147,7 @@ impl Execute for DoNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
         let mut result = Value::Nil;
         for tag in self.expressions() {
-            result = interpreter.interpret_tag(tag)?;
+            result = tag.execute(interpreter)?;
         }
         Ok(result)
     }
@@ -397,35 +396,36 @@ impl Execute for FunctionCallNode {
     }
 }
 
-fn all_symbols(parameters: &VectorNode) -> bool {
-    parameters.items().iter().all(|item| item.is_symbol())
-}
+// fn all_symbols(parameters: &VectorNode) -> bool {
+//     parameters.items().iter().all(|item| item.is_symbol())
+// }
 
 impl Execute for FunctionNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
-        let parameter_nodes = interpreter.get_vector(self.parameters())?;
-        if all_symbols(&parameter_nodes) {
-            let parameters: Vec<_> = interpreter
-                .get_symbols(&parameter_nodes.items())?
-                .iter()
-                .flat_map(|node| {
-                    node.execute(interpreter)
-                        .ok()
-                        .and_then(|value| value.take_symbol())
-                })
-                .collect();
-            Ok(Value::Function(Function {
-                name: {
-                    self.name()
-                        .and_then(|name| interpreter.get_symbol(name).ok())
-                        .and_then(|symbol_node| symbol_node.execute(interpreter).ok())
-                        .and_then(|value| value.take_symbol())
-                },
-                parameters,
-                body: self.body(),
-            }))
-        } else {
-            todo!("handle destructing and variadic parameters")
-        }
+        todo!()
+        // let parameter_nodes = interpreter.get_vector(self.parameters())?;
+        // if all_symbols(&parameter_nodes) {
+        //     let parameters: Vec<_> = interpreter
+        //         .get_symbols(&parameter_nodes.items())?
+        //         .iter()
+        //         .flat_map(|node| {
+        //             node.execute(interpreter)
+        //                 .ok()
+        //                 .and_then(|value| value.take_symbol())
+        //         })
+        //         .collect();
+        //     Ok(Value::Function(Function {
+        //         name: {
+        //             self.name()
+        //                 .and_then(|name| interpreter.get_symbol(name).ok())
+        //                 .and_then(|symbol_node| symbol_node.execute(interpreter).ok())
+        //                 .and_then(|value| value.take_symbol())
+        //         },
+        //         parameters,
+        //         body: self.body(),
+        //     }))
+        // } else {
+        //     todo!("handle destructing and variadic parameters")
+        // }
     }
 }
