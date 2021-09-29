@@ -14,6 +14,7 @@ pub mod prelude;
 use crate::ast::parser;
 use crate::ast::parser::parse;
 use crate::ast::scanner::Scanner;
+use crate::prelude::RuntimeResult;
 use crate::result::runtime::ErrorKind as PEK;
 use crate::result::runtime::ErrorKind as REK;
 use crate::result::runtime::ErrorKind as SEK;
@@ -49,7 +50,12 @@ fn run_file(file: String) -> Result<()> {
 fn main() {
     // win::main();
     let file = cli::start();
-    run_file(file);
+    match run_file(file) {
+        Ok(ok) => {}
+        Err(err) => {
+            println!("error {:?}", err)
+        }
+    }
 }
 
 mod cli {

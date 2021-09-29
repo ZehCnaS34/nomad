@@ -75,35 +75,49 @@ pub enum Node {
     Decorator(DecoratorNode),
 }
 
-pub trait ToNode {
-    fn make_node(tags: Vec<Node>) -> Result<Node, crate::result::runtime::ErrorKind>;
+macro_rules! boilerplate {
+    ($node:path , $sub:ident, $take:ident, $as:ident) => {
+        impl Node {
+            pub fn $as(&self) -> Option<&$sub> {
+                match self {
+                    $node(var) => Some(var),
+                    _ => None,
+                }
+            }
+
+            pub fn $take(self) -> Option<$sub> {
+                match self {
+                    $node(var) => Some(var),
+                    _ => None,
+                }
+            }
+        }
+    };
 }
 
-impl Node {
-    pub fn as_symbol(&self) -> Option<&SymbolNode> {
-        match self {
-            Node::Symbol(symbol) => Some(symbol),
-            _ => None,
-        }
-    }
-    pub fn take_symbol(self) -> Option<SymbolNode> {
-        match self {
-            Node::Symbol(symbol) => Some(symbol),
-            _ => None,
-        }
-    }
+boilerplate! { Node::Boolean, BooleanNode, take_boolean, as_boolean }
+boilerplate! { Node::Decorator, DecoratorNode, take_dectorator, as_decorator }
+boilerplate! { Node::Definition, DefinitionNode, take_definition, as_definition }
+boilerplate! { Node::Do, DoNode, take_do, as_do }
+boilerplate! { Node::Function, FunctionNode, take_function, as_function }
+boilerplate! { Node::FunctionCall, FunctionCallNode, take_function_call, as_function_call }
+boilerplate! { Node::If, IfNode, take_if, as_if }
+boilerplate! { Node::Keyword, KeywordNode, take_keyword, as_keyword }
+boilerplate! { Node::Let, LetNode, take_let, as_let }
+boilerplate! { Node::List, ListNode, take_list, as_list }
+boilerplate! { Node::Loop, LoopNode, take_loop, as_loop }
+boilerplate! { Node::Macro, MacroNode, take_macro, as_macro }
+boilerplate! { Node::Meta, MetaNode, take_meta, as_meta }
+boilerplate! { Node::Number, NumberNode, take_number, as_number }
+boilerplate! { Node::Program, ProgramNode, take_program, as_program }
+boilerplate! { Node::QuasiQuote, QuasiQuoteNode, take_quasi_quote, as_quasi_quote }
+boilerplate! { Node::Quote, QuoteNode, take_quote, as_quote }
+boilerplate! { Node::Recur, RecurNode, take_recur, as_recur }
+boilerplate! { Node::String, StringNode, take_string, as_string }
+boilerplate! { Node::Symbol, SymbolNode, take_symbol, as_symbol }
+boilerplate! { Node::Vector, VectorNode, take_vector, as_vector }
+boilerplate! { Node::While, WhileNode, take_while, as_while }
 
-    pub fn as_vector(&self) -> Option<&VectorNode> {
-        match self {
-            Node::Vector(node) => Some(node),
-            _ => None,
-        }
-    }
-
-    pub fn take_vector(self) -> Option<VectorNode> {
-        match self {
-            Node::Vector(node) => Some(node),
-            _ => None,
-        }
-    }
+pub trait ToNode {
+    fn make_node(tags: Vec<Node>) -> Result<Node, crate::result::runtime::ErrorKind>;
 }

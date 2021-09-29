@@ -6,3 +6,5 @@
 (conj env "simple")
 
 (do (println "awesome"))
+
+(let [a "awesome"] (+ 1 2 a))
