@@ -1,14 +1,14 @@
 use std::collections::{HashMap, VecDeque};
 use std::sync::Mutex;
 
-use crate::ast::node;
 use crate::ast::node::Node;
 use crate::ast::node::SymbolNode;
 use crate::ast::node::VectorNode;
 use crate::ast::parser::AST;
 use crate::ast::Tag;
+use crate::prelude::*;
 use crate::result::runtime::ErrorKind;
-use crate::result::RuntimeResult;
+use crate::result::Result;
 
 mod context;
 mod execution;
@@ -26,25 +26,20 @@ pub use operation::Introspection;
 pub use operation::Length;
 pub use operation::Math;
 
-use value::Boolean;
-use value::Function;
-use value::NativeFunction;
-use value::Number;
-use value::String;
+use value::nf;
 use value::Symbol;
 pub use value::Value;
-use value::Var;
 
 pub trait NodeQuery {
-    fn get_nodes(&self, tags: Vec<Tag>) -> RuntimeResult<Vec<Node>>;
-    fn get_node(&self, tag: Tag) -> RuntimeResult<Node>;
-    fn get_vector(&self, tag: Tag) -> RuntimeResult<VectorNode>;
-    fn get_symbol(&self, tags: Tag) -> RuntimeResult<SymbolNode>;
-    fn get_symbols(&self, tags: &Vec<Tag>) -> RuntimeResult<Vec<SymbolNode>>;
+    fn get_nodes(&self, tags: Vec<Tag>) -> Result<Vec<Node>>;
+    fn get_node(&self, tag: Tag) -> Result<Node>;
+    fn get_vector(&self, tag: Tag) -> Result<VectorNode>;
+    fn get_symbol(&self, tags: Tag) -> Result<SymbolNode>;
+    fn get_symbols(&self, tags: &Vec<Tag>) -> Result<Vec<SymbolNode>>;
 }
 
 impl NodeQuery for Interpreter {
-    fn get_nodes(&self, tags: Vec<Tag>) -> RuntimeResult<Vec<Node>> {
+    fn get_nodes(&self, tags: Vec<Tag>) -> Result<Vec<Node>> {
         let mut nodes = vec![];
         for tag in tags {
             nodes.push(self.get_node(tag)?);
@@ -52,14 +47,14 @@ impl NodeQuery for Interpreter {
         Ok(nodes)
     }
 
-    fn get_node(&self, tag: Tag) -> RuntimeResult<Node> {
+    fn get_node(&self, tag: Tag) -> Result<Node> {
         self.ast
             .as_ref()
             .and_then(|ast| ast.get(&tag).cloned())
             .ok_or(ErrorKind::NodeNotFound)
     }
 
-    fn get_vector(&self, tag: Tag) -> RuntimeResult<VectorNode> {
+    fn get_vector(&self, tag: Tag) -> Result<VectorNode> {
         if let Node::Vector(node) = self.get_node(tag)? {
             Ok(node)
         } else {
@@ -67,7 +62,7 @@ impl NodeQuery for Interpreter {
         }
     }
 
-    fn get_symbol(&self, tag: Tag) -> RuntimeResult<SymbolNode> {
+    fn get_symbol(&self, tag: Tag) -> Result<SymbolNode> {
         if let Node::Symbol(node) = self.get_node(tag)? {
             Ok(node)
         } else {
@@ -75,7 +70,7 @@ impl NodeQuery for Interpreter {
         }
     }
 
-    fn get_symbols(&self, tags: &Vec<Tag>) -> RuntimeResult<Vec<SymbolNode>> {
+    fn get_symbols(&self, tags: &Vec<Tag>) -> Result<Vec<SymbolNode>> {
         let mut symbols = vec![];
         for tag in tags {
             symbols.push(self.get_symbol(*tag)?);
@@ -92,101 +87,33 @@ pub struct Interpreter {
 }
 
 impl Interpreter {
-    pub fn new() -> Interpreter {
+    pub fn boot() -> Result<Interpreter> {
         let context = {
-            use NativeFunction::*;
+            use nf::*;
             let context = Context::new();
-            context.new_namespace(Symbol::from("nomad.core"));
-            context.define("now", Now);
-            context.define("dump-context", DumpContext);
-            context.define("=", Eq);
-            context.define("mod", Mod);
-            context.define("<", LessThan);
-            // TODO: Convert to macro when that system is inplace.
-            context.define("or", Or);
-            context.define(">", GreaterThan);
-            context.define("+", Plus);
-            context.define("*", Multiply);
-            context.define("/", Divide);
-            context.define("-", Minus);
-            context.define("get", Get);
-            context.define("conj", Conj);
-            context.define("count", Count);
-            context.define("print", Print);
-            context.define("println", Println);
-            context.define("*version*", Value::make_number(0.into()));
+            context.new_namespace(Symbol::from("nomad.core"))?;
+            context.define("now", Now)?;
+            context.define("=", Equal)?;
+            context.define("mod", Modulus)?;
+            context.define("<", LessThan)?;
+            context.define(">", GreaterThan)?;
+            context.define("+", Plus)?;
+            context.define("*", Multiply)?;
+            context.define("/", Divide)?;
+            context.define("-", Minus)?;
+            context.define("get", Get)?;
+            context.define("conj", Conj)?;
+            context.define("count", Count)?;
+            context.define("print", Print)?;
+            context.define("println", Println)?;
+            context.define("*version*", Value::make_number(0.into()))?;
             context
         };
-        Interpreter {
+        Ok(Interpreter {
             ast: None,
             context,
             values: Mutex::new(HashMap::new()),
-        }
-    }
-
-    fn lt(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
-        use Value::{Boolean, Number};
-        match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(l.lt(r).into()),
-            pair => Err(ErrorKind::InvalidOperation),
-        }
-    }
-
-    fn eq(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
-        use Value::{Boolean, Number};
-        match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(l.eq(r).into()),
-            pair => Err(ErrorKind::InvalidOperation),
-        }
-    }
-
-    fn gt(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
-        use Value::{Boolean, Number};
-        match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(l.gt(r).into()),
-            pair => Err(ErrorKind::InvalidOperation),
-        }
-    }
-
-    fn add(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
-        use Value::{Number, String};
-        match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l.add(r))),
-            (String(l), String(r)) => Ok(String(l.concat(r))),
-            pair => Err(ErrorKind::InvalidOperation),
-        }
-    }
-
-    fn modulus(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
-        use Value::Number;
-        match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l.modulus(r))),
-            pair => Err(ErrorKind::InvalidOperation),
-        }
-    }
-
-    fn sub(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
-        use Value::Number;
-        match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l.sub(r))),
-            pair => Err(ErrorKind::InvalidOperation),
-        }
-    }
-
-    fn mul(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
-        use Value::Number;
-        match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l.mul(r))),
-            pair => Err(ErrorKind::InvalidOperation),
-        }
-    }
-
-    fn div(&self, lhs: &Value, rhs: &Value) -> RuntimeResult<Value> {
-        use Value::Number;
-        match (lhs, rhs) {
-            (Number(l), Number(r)) => Ok(Number(l.div(r))),
-            pair => Err(ErrorKind::InvalidOperation),
-        }
+        })
     }
 
     pub fn dump_context(&self) {
@@ -198,12 +125,12 @@ impl Interpreter {
         values.insert(symbol, atom);
     }
 
-    pub fn interpret_tag(&self, tag: Tag) -> RuntimeResult<Value> {
+    pub fn interpret_tag(&self, tag: Tag) -> Result<Value> {
         let node = self.get_node(tag)?;
         node.execute(&self)
     }
 
-    pub fn resolve(&self, symbol: &Symbol) -> RuntimeResult<Value> {
+    pub fn resolve(&self, symbol: &Symbol) -> Result<Value> {
         if let Ok(value) = self.context.get(symbol) {
             Ok(value)
         } else {
@@ -211,7 +138,7 @@ impl Interpreter {
         }
     }
 
-    pub fn interpret_and_resolve_tags(&self, tags: Vec<Tag>) -> RuntimeResult<Vec<Value>> {
+    pub fn interpret_and_resolve_tags(&self, tags: Vec<Tag>) -> Result<Vec<Value>> {
         let mut values = vec![];
         for tag in tags {
             values.push(self.interpret_and_resolve_tag(tag)?);
@@ -219,7 +146,7 @@ impl Interpreter {
         Ok(values)
     }
 
-    pub fn interpret_and_resolve_tag(&self, tag: Tag) -> RuntimeResult<Value> {
+    pub fn interpret_and_resolve_tag(&self, tag: Tag) -> Result<Value> {
         let value = self.interpret_tag(tag)?;
         if let Some(symbol) = value.as_symbol() {
             println!("{:?}", symbol);
@@ -236,7 +163,7 @@ impl Interpreter {
             .map(|tag| tag.clone())
     }
 
-    pub fn eval(&mut self, ast: AST) -> RuntimeResult<Value> {
+    pub fn eval(&mut self, ast: AST) -> Result<Value> {
         self.ast = Some(ast);
         if let Some(root) = self.root() {
             self.interpret_and_resolve_tag(root)
@@ -245,7 +172,7 @@ impl Interpreter {
         }
     }
 
-    pub fn define(&self, symbol: Symbol, value: Value) -> RuntimeResult<Value> {
+    pub fn define(&self, symbol: Symbol, value: Value) -> Result<Value> {
         self.context.define(symbol.clone(), value).map(Value::Var)
     }
 

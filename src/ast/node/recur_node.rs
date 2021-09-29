@@ -1,10 +1,5 @@
 use crate::ast::node::{Node, ToNode};
-use crate::ast::tag::Partition;
-use crate::ast::Tag;
-use crate::interpreter::Interpreter;
-use crate::result::runtime::ErrorKind;
-use crate::result::runtime::ErrorKind::General;
-use std::fmt;
+use crate::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct RecurNode {
@@ -14,7 +9,7 @@ pub struct RecurNode {
 impl RecurNode {}
 
 impl ToNode for RecurNode {
-    fn make_node(tags: Vec<Node>) -> Result<Node, ErrorKind> {
+    fn make_node(_: Vec<Node>) -> Result<Node> {
         // let (_, bindings) = tags.take_1().ok_or(General("Failed"))?;
         todo!()
         // Ok(Node::Recur(RecurNode { bindings }))

@@ -1,6 +1,6 @@
 use crate::interpreter::value::{Symbol, Value};
 use crate::result::runtime::ErrorKind as Error;
-use crate::result::RuntimeResult as Result;
+use crate::result::Result;
 
 use prettytable::{Cell, Row, Table};
 use shared_map::SharedMap;
@@ -19,7 +19,7 @@ mod shared_map {
     use std::sync::PoisonError;
 
     use crate::result::runtime::ErrorKind as Error;
-    use crate::result::RuntimeResult as Result;
+    use crate::result::Result;
 
     #[derive(Debug)]
     pub struct SharedMap<Key: Eq + Hash, Value>(Arc<Mutex<HashMap<Key, Value>>>);

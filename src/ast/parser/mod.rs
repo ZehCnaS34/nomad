@@ -1,20 +1,16 @@
+use crate::prelude::*;
 use std::cell::Cell;
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::convert::TryFrom;
-use std::fmt;
-use std::fmt::Formatter;
-use std::str::FromStr;
 use std::sync::Mutex;
 
 use crate::result::runtime::ErrorKind as Error;
-use crate::result::RuntimeResult as Result;
+use crate::result::Result;
 
 use super::node as n;
 use super::node::ToNode;
 use super::scanner::token::{Kind, Token};
-use super::{Id, Tag};
-use crate::ast::node::QuoteNode;
-use crate::ast::tag::TagKind;
+use super::Tag;
 
 #[derive(Debug, Clone, Copy, Hash, Eq, PartialEq)]
 enum Form {

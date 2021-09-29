@@ -28,9 +28,9 @@ pub trait MakeError {
     fn info(message: &'static str) -> Self::Item;
 }
 
-pub type RuntimeResult<T> = std::result::Result<T, runtime::ErrorKind>;
-impl<T> MakeError for RuntimeResult<T> {
-    type Item = RuntimeResult<T>;
+pub type Result<T> = std::result::Result<T, runtime::ErrorKind>;
+impl<T> MakeError for Result<T> {
+    type Item = Result<T>;
     fn info(message: &'static str) -> Self::Item {
         Err(runtime::ErrorKind::General(message))
     }

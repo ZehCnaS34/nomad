@@ -1,14 +1,8 @@
 use crate::interpreter::value::{Symbol, Value, Var};
+use crate::prelude::*;
 use crate::result::runtime::ErrorKind as Error;
-use crate::result::RuntimeResult;
-use crate::result::RuntimeResult as Result;
-
 use std::collections::HashMap;
-use std::error::Error as E;
-use std::sync::Arc;
-use std::sync::LockResult;
 use std::sync::Mutex;
-use std::sync::MutexGuard;
 use std::sync::PoisonError;
 
 mod debug;
@@ -27,7 +21,7 @@ impl<Guard> From<PoisonError<Guard>> for Error {
 }
 
 mod pointers {
-    use crate::interpreter::value::{Symbol, Value};
+    use crate::interpreter::value::Symbol;
 
     #[derive(Debug)]
     pub struct Pointers {
@@ -60,7 +54,7 @@ pub struct Context {
 }
 
 impl Context {
-    fn current_namespace(&self) -> RuntimeResult<Arc<Namespace>> {
+    fn current_namespace(&self) -> Result<Arc<Namespace>> {
         let mut namespaces = self.namespaces.lock()?;
         let mut pointers = self.pointers.lock()?;
         let namespace = namespaces
@@ -69,7 +63,7 @@ impl Context {
         Ok(namespace.clone())
     }
 
-    pub fn new_namespace(&self, name: Symbol) -> RuntimeResult<()> {
+    pub fn new_namespace(&self, name: Symbol) -> Result<()> {
         let mut namespaces = self.namespaces.lock()?;
         namespaces.insert(name.clone(), Arc::new(Namespace::new(name)));
         Ok(())
@@ -84,7 +78,7 @@ impl Context {
         context
     }
 
-    pub fn define<S, V>(&self, symbol: S, value: V) -> RuntimeResult<Var>
+    pub fn define<S, V>(&self, symbol: S, value: V) -> Result<Var>
     where
         S: Into<Symbol>,
         V: Into<Value>,
@@ -108,7 +102,7 @@ impl Context {
     }
 
     pub fn scope_depth(&self) -> Result<usize> {
-        let mut scope = self.scope.lock()?;
+        let scope = self.scope.lock()?;
         Ok(scope.len())
     }
 
@@ -120,7 +114,7 @@ impl Context {
 
     pub fn set(&self, name: Symbol, value: Value) -> Result<()> {
         let mut scope = self.scope.lock()?;
-        scope.define(name, value);
+        scope.define(name, value)?;
         Ok(())
     }
 

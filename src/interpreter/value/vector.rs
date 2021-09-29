@@ -166,8 +166,9 @@ impl<T> Node<T> {
             Node::Internal { depth, .. } => *depth,
         }
     }
+    
     fn mask(&self, key: usize) -> usize {
-        let offset = (BITS * self.depth());
+        let offset = BITS * self.depth();
         let mask = MASK << offset;
         (key & mask) >> offset
     }
@@ -196,7 +197,7 @@ impl<T> Node<T> {
                 values.push(value);
                 Leaf { values }
             }
-            Node::Internal { depth, links } => {
+            Node::Internal { depth, .. } => {
                 let node = Arc::new(if *depth == 1 {
                     Node::gen_leaf().anchor(value)
                 } else {
@@ -260,7 +261,7 @@ impl<T> Node<T> {
             }
             Info::Full => match self {
                 Leaf { values: vs } => {
-                    let mut links = vec![
+                    let links = vec![
                         Arc::new(Leaf { values: vs.clone() }),
                         Arc::new(Leaf {
                             values: vec![value],
@@ -269,7 +270,7 @@ impl<T> Node<T> {
                     Internal { depth: 1, links }
                 }
                 Internal { depth, links: ls } => {
-                    let mut links = vec![
+                    let links = vec![
                         Arc::new(Internal {
                             depth: self.depth(),
                             links: ls.clone(),
@@ -294,11 +295,11 @@ impl<T> Node<T> {
 
 impl<T: fmt::Display> fmt::Display for Vector<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
-        write!(f, "( ");
+        write!(f, "( ")?;
         for i in 0..self.length {
             write!(f, "{} ", self.get(i).unwrap())?;
         }
-        write!(f, ")");
+        write!(f, ")")?;
         Ok(())
     }
 }
@@ -317,7 +318,7 @@ impl<T: fmt::Display> fmt::Display for Node<T> {
                 }
                 write!(f, ")")?;
             }
-            Internal { depth, links } => {
+            Internal { depth: _, links } => {
                 let end = links.len();
                 write!(f, "(")?;
                 for (i, link) in links.iter().enumerate() {

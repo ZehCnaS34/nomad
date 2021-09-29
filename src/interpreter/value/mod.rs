@@ -3,7 +3,7 @@ use crate::interpreter::operation::Introspection;
 use crate::interpreter::operation::Length;
 use crate::interpreter::operation::Lookup;
 use crate::result::runtime::ErrorKind as Error;
-use crate::result::RuntimeResult as Result;
+use crate::result::Result;
 
 mod boolean;
 mod function;
@@ -21,8 +21,9 @@ use std::str::FromStr;
 use std::sync::Arc;
 
 pub use boolean::Boolean;
+pub use function::nf;
 pub use function::Function;
-pub use function::NativeFunction;
+pub use function::UserFunction;
 pub use number::Number;
 pub use string::String;
 pub use symbol::Symbol;
@@ -39,8 +40,7 @@ pub enum Value {
     String(String),
     Symbol(Symbol),
     Var(Var),
-    Function(Function),
-    NativeFunction(NativeFunction),
+    Function(Arc<dyn Function>),
     Vector(Vector<Value>),
 }
 
@@ -85,12 +85,6 @@ impl From<f64> for Value {
     }
 }
 
-impl From<NativeFunction> for Value {
-    fn from(f: NativeFunction) -> Self {
-        Value::NativeFunction(f)
-    }
-}
-
 impl fmt::Display for Value {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
@@ -100,14 +94,7 @@ impl fmt::Display for Value {
             Value::String(value) => write!(f, "{}", value),
             Value::Symbol(value) => write!(f, "{}", value),
             Value::Var(value) => write!(f, "{}", value),
-            Value::Function(value) => {
-                if let Some(name) = &value.name {
-                    write!(f, "[fn:{}]", name)
-                } else {
-                    write!(f, "[fn:anonymous]")
-                }
-            }
-            Value::NativeFunction(value) => write!(f, "[native]"),
+            Value::Function(value) => write!(f, "[fn:{}]", value.name()),
             Value::Vector(vector) => write!(f, "{}", vector),
         }
     }
@@ -150,7 +137,7 @@ impl Value {
         }
     }
 
-    pub fn take_function(self) -> Option<Function> {
+    pub fn take_function(self) -> Option<Arc<dyn Function>> {
         match self {
             Value::Function(function) => Some(function),
             _ => None,

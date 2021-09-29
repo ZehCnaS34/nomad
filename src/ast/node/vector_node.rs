@@ -1,8 +1,6 @@
 use super::Node;
 use crate::ast::node::ToNode;
-use crate::ast::Tag;
 use crate::defnode;
-use crate::interpreter::Interpreter;
 use crate::prelude::*;
 use crate::result::runtime::ErrorKind;
 use std::convert::TryFrom;
@@ -23,7 +21,8 @@ impl VectorNode {
         println!("vecotr.items {:?}", items);
         VectorNode { items }
     }
+
     pub fn items(&self) -> &Vec<Node> {
-        self.items().as_ref()
+        self.items.as_ref()
     }
 }

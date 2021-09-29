@@ -1,9 +1,7 @@
-use crate::interpreter::value::{Symbol, Value};
-use crate::result::runtime::ErrorKind as Error;
-use crate::result::RuntimeResult;
-use crate::result::RuntimeResult as Result;
-
 use super::debug::Dump;
+use crate::interpreter::value::{Symbol, Value};
+use crate::prelude::*;
+use crate::result::runtime::ErrorKind as Error;
 
 use prettytable::{Cell, Row, Table};
 
@@ -77,7 +75,7 @@ impl Scope {
         Ok(())
     }
 
-    pub fn resolve(&self, name: &Symbol) -> RuntimeResult<Value> {
+    pub fn resolve(&self, name: &Symbol) -> Result<Value> {
         for scope in self.iter() {
             let storage = scope.lock()?;
             if let Some(value) = storage.get(name) {

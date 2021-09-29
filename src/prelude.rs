@@ -1,5 +1,7 @@
+pub use std::collections::HashMap;
 pub use std::fmt;
 pub use std::sync::Arc;
+pub use std::sync::LockResult;
 pub use std::sync::Mutex;
 pub use std::sync::MutexGuard;
 
@@ -27,7 +29,7 @@ macro_rules! defnode {
         impl TryFrom<Vec<Node>> for $struct {
             type Error = ErrorKind;
 
-            fn try_from($var: Vec<Node>) -> Result<$struct, ErrorKind> {
+            fn try_from($var: Vec<Node>) -> Result<$struct> {
                 $body
             }
         }
@@ -37,7 +39,7 @@ macro_rules! defnode {
             }
         }
         impl ToNode for $struct {
-            fn make_node($var: Vec<Node>) -> Result<Node, ErrorKind> {
+            fn make_node($var: Vec<Node>) -> Result<Node> {
                 let node = $struct::try_from($var)?;
                 Ok(node.into())
             }

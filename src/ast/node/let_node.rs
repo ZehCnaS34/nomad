@@ -4,7 +4,6 @@ use crate::defnode;
 use crate::prelude::*;
 use crate::result::runtime::ErrorKind;
 use crate::result::runtime::ErrorKind::General;
-use crate::{ast, ast::Tag};
 
 #[derive(Debug, Clone)]
 pub struct LetNode {

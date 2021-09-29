@@ -1,5 +1,26 @@
-use crate::ast::Tag;
-use crate::interpreter::Interpreter;
+pub use boolean_node::BooleanNode;
+pub use decorator_node::DecoratorNode;
+pub use def_node::DefinitionNode;
+pub use do_node::DoNode;
+pub use function_node::FunctionCallNode;
+pub use function_node::FunctionNode;
+pub use if_node::IfNode;
+pub use keyword_node::KeywordNode;
+pub use let_node::LetNode;
+pub use list_node::ListNode;
+pub use loop_node::LoopNode;
+pub use macro_node::MacroNode;
+pub use meta_node::MetaNode;
+pub use number_node::NumberNode;
+pub use program_node::ProgramNode;
+pub use quasi_quote_node::QuasiQuoteNode;
+pub use quote_node::QuoteNode;
+pub use recur_node::RecurNode;
+pub use string_node::StringNode;
+pub use symbol_node::SymbolNode;
+pub use vector_node::VectorNode;
+pub use while_node::WhileNode;
+
 use crate::prelude::*;
 
 mod boolean_node;
@@ -23,30 +44,6 @@ mod string_node;
 mod symbol_node;
 mod vector_node;
 mod while_node;
-
-use crate::result::runtime::ErrorKind;
-pub use boolean_node::BooleanNode;
-pub use decorator_node::DecoratorNode;
-pub use def_node::DefinitionNode;
-pub use do_node::DoNode;
-pub use function_node::FunctionCallNode;
-pub use function_node::FunctionNode;
-pub use if_node::IfNode;
-pub use keyword_node::KeywordNode;
-pub use let_node::LetNode;
-pub use list_node::ListNode;
-pub use loop_node::LoopNode;
-pub use macro_node::MacroNode;
-pub use meta_node::MetaNode;
-pub use number_node::NumberNode;
-pub use program_node::ProgramNode;
-pub use quasi_quote_node::QuasiQuoteNode;
-pub use quote_node::QuoteNode;
-pub use recur_node::RecurNode;
-pub use string_node::StringNode;
-pub use symbol_node::SymbolNode;
-pub use vector_node::VectorNode;
-pub use while_node::WhileNode;
 
 #[derive(Debug, Clone)]
 pub enum Node {
@@ -119,5 +116,5 @@ boilerplate! { Node::Vector, VectorNode, take_vector, as_vector }
 boilerplate! { Node::While, WhileNode, take_while, as_while }
 
 pub trait ToNode {
-    fn make_node(tags: Vec<Node>) -> Result<Node, crate::result::runtime::ErrorKind>;
+    fn make_node(tags: Vec<Node>) -> Result<Node>;
 }

@@ -1,6 +1,5 @@
 use crate::ast::node::{Node, ToNode};
 use crate::ast::tag::Partition;
-use crate::ast::Tag;
 use crate::result::runtime::ErrorKind;
 use crate::result::runtime::ErrorKind::General;
 

@@ -1,10 +1,5 @@
 use crate::ast::node::{Node, ToNode, VectorNode};
-use crate::ast::tag::Partition;
-use crate::ast::Tag;
-use crate::interpreter::Interpreter;
 use crate::result::runtime::ErrorKind;
-use crate::result::runtime::ErrorKind::General;
-use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct LoopNode {
@@ -15,7 +10,7 @@ pub struct LoopNode {
 impl LoopNode {}
 
 impl ToNode for LoopNode {
-    fn make_node(tags: Vec<Node>) -> Result<Node, ErrorKind> {
+    fn make_node(_: Vec<Node>) -> Result<Node, ErrorKind> {
         todo!()
     }
 }

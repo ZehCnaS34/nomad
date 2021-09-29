@@ -1,12 +1,9 @@
-use crate::defnode;
-use crate::prelude::*;
-use std::any::Any;
-
 use crate::ast::node::{Node, SymbolNode, ToNode, VectorNode};
 use crate::ast::tag::Partition;
-use crate::result::runtime;
+use crate::ast::Tag;
+use crate::defnode;
+use crate::prelude::*;
 use crate::result::runtime::ErrorKind::General;
-use crate::{ast, ast::Tag};
 
 trait Show {
     fn show(self) -> Self
@@ -54,7 +51,7 @@ pub enum FunctionNode {
 
 defnode! {
     Node::Function : FunctionNode :: nodes => {
-        let (form, name_or_params, params_or_first_body, body) = nodes.take_3().unwrap();
+        let (_, name_or_params, params_or_first_body, body) = nodes.take_3().unwrap();
         Ok(
             match (name_or_params, params_or_first_body) {
                 (Node::Symbol(name), Node::Vector(parameters)) => FunctionNode::Named {

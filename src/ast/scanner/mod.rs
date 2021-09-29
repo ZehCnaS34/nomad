@@ -2,19 +2,13 @@ mod span;
 pub mod token;
 
 use span::Span;
-use std::cell::Cell;
 use token::{Kind, Token};
 
 const EOF: char = '\0';
 const NL: char = '\n';
-const TAB: char = '\t';
-const R: char = '\r';
 
 fn is_newline(c: char) -> bool {
     NL == c
-}
-fn is_quote(c: char) -> bool {
-    '"' == c
 }
 
 fn is_symbol_start(c: char) -> bool {
@@ -207,7 +201,7 @@ impl Scanner {
                     self.eat();
                     self.eat();
                 }
-                c => {
+                _ => {
                     self.eat();
                 }
             }
