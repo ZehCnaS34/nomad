@@ -119,12 +119,12 @@ impl Execute for MetaNode {
 impl Execute for WhileNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
         loop {
-            let condition = interpreter.interpret_tag(self.condition())?;
+            let condition = self.condition().execute(interpreter)?;
             if !condition.truthy() {
                 break;
             }
             for tag in self.body() {
-                interpreter.interpret_tag(tag)?;
+                tag.execute(interpreter)?;
             }
         }
         Ok(Value::Nil)

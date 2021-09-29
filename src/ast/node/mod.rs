@@ -1,5 +1,6 @@
 use crate::ast::Tag;
 use crate::interpreter::Interpreter;
+use crate::prelude::*;
 
 mod boolean_node;
 mod decorator_node;
@@ -45,6 +46,7 @@ pub use string_node::StringNode;
 pub use symbol_node::SymbolNode;
 pub use vector_node::VectorNode;
 pub use while_node::WhileNode;
+use crate::result::runtime::ErrorKind;
 
 #[derive(Debug, Clone)]
 pub enum Node {

@@ -1,5 +1,6 @@
+use crate::defnode;
+use crate::prelude::*;
 use std::any::Any;
-use std::fmt;
 
 use crate::ast::node::{Node, SymbolNode, ToNode, VectorNode};
 use crate::ast::tag::Partition;
@@ -19,13 +20,13 @@ pub struct FunctionCallNode {
     arguments: Vec<Node>,
 }
 
-impl ToNode for FunctionCallNode {
-    fn make_node(nodes: Vec<Node>) -> Result<Node, parser::ErrorKind> {
+defnode! {
+    Node::FunctionCall : FunctionCallNode :: nodes => {
         let (function, arguments) = nodes.take_1().unwrap();
-        Ok(Node::FunctionCall(FunctionCallNode{
+        Ok(FunctionCallNode {
             function: Box::new(function),
             arguments,
-        }))
+        })
     }
 }
 
@@ -51,10 +52,10 @@ pub enum FunctionNode {
     },
 }
 
-impl ToNode for FunctionNode {
-    fn make_node(tags: Vec<Node>) -> Result<Node, parser::ErrorKind> {
-        let (form, name_or_params, params_or_first_body, body) = tags.take_3().unwrap();
-        Ok(Node::Function(
+defnode! {
+    Node::Function : FunctionNode :: nodes => {
+        let (form, name_or_params, params_or_first_body, body) = nodes.take_3().unwrap();
+        Ok(
             match (name_or_params, params_or_first_body) {
                 (Node::Symbol(name), Node::Vector(parameters)) => FunctionNode::Named {
                     name,
@@ -67,7 +68,7 @@ impl ToNode for FunctionNode {
                 },
                 (_, _) => return Err(parser::ErrorKind::General("fuck")),
             },
-        ))
+        )
     }
 }
 

@@ -1,7 +1,9 @@
 use crate::ast::node::{Node, ToNode};
 use crate::ast::tag::Partition;
 use crate::ast::Tag;
+use crate::defnode;
 use crate::interpreter::Interpreter;
+use crate::prelude::*;
 use crate::result::parser::ErrorKind;
 use crate::result::parser::ErrorKind::General;
 
@@ -16,8 +18,8 @@ impl DoNode {
     }
 }
 
-impl ToNode for DoNode {
-    fn make_node(tags: Vec<Node>) -> Result<Node, ErrorKind> {
-        todo!()
+defnode! {
+    Node::Do : DoNode :: nodes => {
+        Ok(DoNode { expressions: nodes })
     }
 }

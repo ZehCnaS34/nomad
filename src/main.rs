@@ -8,6 +8,8 @@ pub mod ast;
 pub mod emitter;
 pub mod interpreter;
 pub mod result;
+#[macro_use]
+pub mod prelude;
 
 use crate::ast::parser;
 use crate::ast::parser::parse;

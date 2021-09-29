@@ -1,3 +1,5 @@
+use crate::defnode;
+use crate::prelude::*;
 use crate::result::parser;
 use crate::{
     ast::{node, node::Node, node::ToNode, tag::Partition, Tag},
@@ -7,24 +9,24 @@ use std::fmt;
 
 #[derive(Debug, Clone)]
 pub struct WhileNode {
-    condition: Tag,
-    body: Vec<Tag>,
+    condition: Box<Node>,
+    body: Vec<Node>,
 }
 
-impl ToNode for WhileNode {
-    fn make_node(tags: Vec<Node>) -> Result<Node, parser::ErrorKind> {
-        todo!()
-        // let (_, condition, body) = tags.take_2().ok_or(parser::ErrorKind::CouldNotParseAtom)?;
-        // Ok(Node::While(WhileNode { condition, body }))
+defnode! {
+    Node::While : WhileNode :: nodes => {
+        let (_, condition, body) = nodes.take_2().ok_or(parser::ErrorKind::CouldNotParseAtom)?;
+        Ok(WhileNode { condition: Box::new(condition), body })
     }
 }
+
 
 impl WhileNode {
-    pub fn condition(&self) -> Tag {
-        self.condition
+    pub fn condition(&self) -> &Node {
+        self.condition.as_ref()
     }
 
-    pub fn body(&self) -> Vec<Tag> {
-        self.body.iter().map(Clone::clone).collect()
+    pub fn body(&self) -> &Vec<Node> {
+        &self.body
     }
 }

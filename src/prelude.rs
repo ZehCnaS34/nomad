@@ -9,10 +9,37 @@ pub use crate::ast::scanner::token::Token;
 pub use crate::ast::scanner::Scanner;
 pub use crate::ast::Node;
 pub use crate::ast::Tag;
-pub use crate::interpreter::Value;
 pub use crate::interpreter::Interpreter;
+pub use crate::interpreter::Value;
 pub use crate::result::*;
+
+pub use std::convert::TryFrom;
 
 pub mod node {
     pub use crate::ast::node::*;
+}
+
+#[macro_export]
+macro_rules! defnode {
+    ($enum:path : $struct:ident :: $var:ident => $body:expr ) => {
+        impl TryFrom<Vec<Node>> for $struct {
+            type Error = parser::ErrorKind;
+
+            fn try_from($var: Vec<Node>) -> Result<$struct, parser::ErrorKind> {
+                $body
+            }
+        }
+        impl From<$struct> for Node {
+            fn from($var: $struct) -> Node {
+                $enum($var)
+            }
+        }
+        impl ToNode for $struct {
+            fn make_node($var: Vec<Node>) -> Result<Node, parser::ErrorKind> {
+                let node = $struct::try_from($var)?;
+                Ok(node.into())
+            }
+        }
+        
+    };
 }

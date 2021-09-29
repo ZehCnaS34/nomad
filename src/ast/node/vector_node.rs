@@ -1,4 +1,6 @@
 use super::Node;
+use crate::prelude::*;
+use crate::defnode;
 use crate::ast::node::ToNode;
 use crate::ast::Tag;
 use crate::interpreter::Interpreter;
@@ -10,10 +12,9 @@ pub struct VectorNode {
     items: Vec<Node>,
 }
 
-impl TryFrom<Vec<Node>> for VectorNode {
-    type Error = ErrorKind;
-    fn try_from(items: Vec<Node>) -> Result<Self, Self::Error> {
-        Ok(VectorNode { items })
+defnode! {
+    Node::Vector : VectorNode :: nodes => {
+        Ok(VectorNode { items: nodes })
     }
 }
 

@@ -32,7 +32,7 @@ use value::NativeFunction;
 use value::Number;
 use value::String;
 use value::Symbol;
-use value::Value;
+pub use value::Value;
 use value::Var;
 
 pub trait NodeQuery {

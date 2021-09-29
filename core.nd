@@ -4,3 +4,5 @@
         (println "fuck")))
 
 (conj env "simple")
+
+(do (println "awesome"))
