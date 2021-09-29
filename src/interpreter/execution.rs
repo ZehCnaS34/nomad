@@ -181,6 +181,27 @@ impl Execute for FunctionCallNode {
                 Ok(result)
             }
             Value::NativeFunction(native) => match native {
+                NativeFunction::Count => {
+                    let (object, rest) = interpreter
+                        .interpret_and_resolve_tags(self.arguments())?
+                        .take_1()
+                        .ok_or(ErrorKind::InvalidOperation)?;
+                    Ok(Value::Number(Number::from(match object {
+                        Value::String(string) => string.length(),
+                        Value::Vector(vector) => vector.length(),
+                        _ => return Err(ErrorKind::InvalidOperation),
+                    })))
+                }
+                NativeFunction::Conj => {
+                    let arguments: Vec<_> = self
+                        .arguments()
+                        .iter()
+                        .flat_map(|tag| interpreter.interpret_and_resolve_tag(*tag))
+                        .collect();
+                    let (object, value, rest) =
+                        arguments.take_2().ok_or(ErrorKind::InvalidOperation)?;
+                    object.conj(value)
+                }
                 NativeFunction::Get => {
                     let arguments: Vec<_> = self
                         .arguments()

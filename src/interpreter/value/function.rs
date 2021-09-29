@@ -24,4 +24,6 @@ pub enum NativeFunction {
     GreaterThan,
     Now,
     Get,
+    Conj,
+    Count,
 }

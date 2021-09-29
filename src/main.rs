@@ -8,6 +8,10 @@ pub mod ast;
 pub mod interpreter;
 pub mod result;
 
+use crate::result::RuntimeResult as Result;
+use crate::result::parser::ErrorKind as PEK;
+use crate::result::scanner::ErrorKind as SEK;
+use crate::result::runtime::ErrorKind as REK;
 use crate::ast::parser;
 use crate::ast::parser::parse;
 use crate::ast::scanner::Scanner;
@@ -23,6 +27,19 @@ struct MainResult;
 
 fn run_repl() {}
 
+impl From<SEK> for REK {
+    fn from(_: SEK) -> Self { todo!() }
+}
+
+impl From<PEK> for REK {
+    fn from(_: PEK) -> Self { todo!() }
+}
+
+impl From<io::ErrorKind> for REK {
+    fn from(_: io::ErrorKind) -> Self { todo!() }
+}
+
+
 macro_rules! take {
     ($value:expr) => {
         match $value {
@@ -32,11 +49,12 @@ macro_rules! take {
     };
 }
 
-fn run_file(file: String) {
-    let source = read_to_string(file).expect("Failed to read source file");
-    let tokens = Scanner::scan(source).expect("Failed to tokenize file");
-    let ast = parse(tokens).expect("Failed to parse AST");
+fn run_file(file: String) -> Result<()> {
+    let source = read_to_string(file).ok().ok_or(REK::General("Fuck"))?;
+    let tokens = Scanner::scan(source).ok_or(REK::General("Fuck"))?;
+    let ast = parse(tokens)?;
     let mut interpreter = interpreter::Interpreter::new();
+    let result = interpreter.eval(ast)?;
     match interpreter.eval(ast) {
         Ok(result) => println!("{}", result),
         Err(err) => println!("failure {:?}", err),

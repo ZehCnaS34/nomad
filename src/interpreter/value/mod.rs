@@ -1,3 +1,5 @@
+use crate::interpreter::operation::Conj;
+use crate::interpreter::operation::Length;
 use crate::interpreter::operation::Lookup;
 use crate::result::runtime::ErrorKind as Error;
 use crate::result::RuntimeResult as Result;
@@ -53,6 +55,19 @@ impl Lookup for Value {
                 println!("left {} {}", left, right);
                 Err(Error::General("un supported lookup"))
             }
+        }
+    }
+}
+
+impl Conj for Value {
+    type Container = Value;
+    type Value = Value;
+    type Err = Error;
+
+    fn conj(&self, value: Self::Value) -> Result<Self::Container> {
+        match self {
+            Value::Vector(vector) => Ok(Value::Vector(vector.push(value))),
+            value => Err(Error::General("Unsupported operation.")),
         }
     }
 }

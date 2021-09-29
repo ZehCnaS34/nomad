@@ -7,6 +7,14 @@ pub struct Number {
     pub value: f64,
 }
 
+impl From<usize> for Number {
+    fn from(value: usize) -> Self {
+        Number {
+            value: value as f64,
+        }
+    }
+}
+
 impl From<i64> for Number {
     fn from(value: i64) -> Self {
         Number {

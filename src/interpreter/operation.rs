@@ -24,6 +24,13 @@ pub trait Lookup {
     fn lookup(&self, key: Self::Key) -> Result<&Self::Item, Self::Err>;
 }
 
+pub trait Conj {
+    type Container;
+    type Value;
+    type Err;
+    fn conj(&self, value: Self::Value) -> Result<Self::Container, Self::Err>;
+}
+
 pub trait Math {
     fn add(&self, other: &Self) -> Self;
     fn sub(&self, other: &Self) -> Self;

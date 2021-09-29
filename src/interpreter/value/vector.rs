@@ -1,3 +1,5 @@
+use crate::interpreter::Length;
+
 use std::borrow::Borrow;
 use std::cmp::max;
 use std::fmt;
@@ -9,6 +11,12 @@ use View::*;
 
 const INTERNAL_LINK_ERROR: &'static str = "Links should have at least one child.";
 const LINK_INVARIANT: &'static str = "Expected an internal link";
+
+impl<T> Length for Vector<T> {
+    fn length(&self) -> usize {
+        self.len()
+    }
+}
 
 enum Operation<Ok, Value> {
     Success(Ok),

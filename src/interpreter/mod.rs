@@ -110,6 +110,8 @@ impl Interpreter {
             context.define("/", Divide);
             context.define("-", Minus);
             context.define("get", Get);
+            context.define("conj", Conj);
+            context.define("count", Count);
             context.define("print", Print);
             context.define("println", Println);
             context.define("*version*", Value::make_number(0.into()));
@@ -209,12 +211,22 @@ impl Interpreter {
         }
     }
 
+    pub fn interpret_and_resolve_tags(&self, tags: Vec<Tag>) -> RuntimeResult<Vec<Value>> {
+        let mut values = vec![];
+        for tag in tags {
+            values.push(self.interpret_and_resolve_tag(tag)?);
+        }
+        Ok(values)
+    }
+
     pub fn interpret_and_resolve_tag(&self, tag: Tag) -> RuntimeResult<Value> {
         let value = self.interpret_tag(tag)?;
-        Ok(value
-            .as_symbol()
-            .and_then(|symbol| self.resolve(symbol).ok())
-            .unwrap_or(value))
+        if let Some(symbol) = value.as_symbol() {
+            println!("{:?}", symbol);
+            self.resolve(symbol)
+        } else {
+            Ok(value)
+        }
     }
 
     pub fn root(&self) -> Option<Tag> {
