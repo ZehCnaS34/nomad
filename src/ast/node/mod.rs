@@ -24,6 +24,7 @@ mod symbol_node;
 mod vector_node;
 mod while_node;
 
+use crate::result::runtime::ErrorKind;
 pub use boolean_node::BooleanNode;
 pub use decorator_node::DecoratorNode;
 pub use def_node::DefinitionNode;
@@ -46,7 +47,6 @@ pub use string_node::StringNode;
 pub use symbol_node::SymbolNode;
 pub use vector_node::VectorNode;
 pub use while_node::WhileNode;
-use crate::result::runtime::ErrorKind;
 
 #[derive(Debug, Clone)]
 pub enum Node {
@@ -76,11 +76,17 @@ pub enum Node {
 }
 
 pub trait ToNode {
-    fn make_node(tags: Vec<Node>) -> Result<Node, crate::result::parser::ErrorKind>;
+    fn make_node(tags: Vec<Node>) -> Result<Node, crate::result::runtime::ErrorKind>;
 }
 
 impl Node {
     pub fn as_symbol(&self) -> Option<&SymbolNode> {
+        match self {
+            Node::Symbol(symbol) => Some(symbol),
+            _ => None,
+        }
+    }
+    pub fn take_symbol(self) -> Option<SymbolNode> {
         match self {
             Node::Symbol(symbol) => Some(symbol),
             _ => None,

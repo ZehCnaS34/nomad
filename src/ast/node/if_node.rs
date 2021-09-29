@@ -3,8 +3,8 @@ use crate::ast::node::ToNode;
 use crate::ast::tag::Partition;
 use crate::ast::Tag;
 use crate::interpreter::Interpreter;
-use crate::result::parser::ErrorKind::General;
-use crate::result::ParseResult;
+use crate::result::runtime::ErrorKind::General;
+use crate::result::RuntimeResult;
 use std::fmt;
 
 #[derive(Debug, Clone)]
@@ -25,7 +25,7 @@ impl fmt::Display for IfNode {
 }
 
 impl ToNode for IfNode {
-    fn make_node(tags: Vec<Node>) -> ParseResult<Node> {
+    fn make_node(tags: Vec<Node>) -> RuntimeResult<Node> {
         let (_, condition, true_branch, false_branch, _) = tags.take_4().ok_or(General("Wow"))?;
         Ok(Node::If(IfNode {
             condition: Box::new(condition),

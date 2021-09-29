@@ -1,6 +1,6 @@
 use crate::defnode;
 use crate::prelude::*;
-use crate::result::parser;
+use crate::result::runtime;
 use crate::{
     ast::{node, node::Node, node::ToNode, tag::Partition, Tag},
     interpreter::Interpreter,
@@ -15,11 +15,10 @@ pub struct WhileNode {
 
 defnode! {
     Node::While : WhileNode :: nodes => {
-        let (_, condition, body) = nodes.take_2().ok_or(parser::ErrorKind::CouldNotParseAtom)?;
+        let (_, condition, body) = nodes.take_2().ok_or(CouldNotParseAtom)?;
         Ok(WhileNode { condition: Box::new(condition), body })
     }
 }
-
 
 impl WhileNode {
     pub fn condition(&self) -> &Node {

@@ -6,8 +6,8 @@ use std::fmt::Formatter;
 use std::str::FromStr;
 use std::sync::Mutex;
 
-use crate::result::parser::ErrorKind as Error;
-use crate::result::ParseResult as Result;
+use crate::result::runtime::ErrorKind as Error;
+use crate::result::RuntimeResult as Result;
 
 use super::node as n;
 use super::node::ToNode;
@@ -188,14 +188,12 @@ impl Parser {
     fn expression(&self) -> Result<n::Node> {
         let token = self.take()?;
         match token.kind {
-            Kind::Symbol => {
-                match &token.lexeme[..] {
-                    "nil" => self.submit(n::Node::Nil),
-                    "true" => self.submit(n::Node::Boolean(n::BooleanNode(true))),
-                    "false" => self.submit(n::Node::Boolean(n::BooleanNode(false))),
-                    lexeme => self.submit(n::Node::Symbol(n::SymbolNode::from(lexeme))),
-                }
-            }
+            Kind::Symbol => match &token.lexeme[..] {
+                "nil" => self.submit(n::Node::Nil),
+                "true" => self.submit(n::Node::Boolean(n::BooleanNode(true))),
+                "false" => self.submit(n::Node::Boolean(n::BooleanNode(false))),
+                lexeme => self.submit(n::Node::Symbol(n::SymbolNode::from(lexeme))),
+            },
             Kind::Number => {
                 let number: f64 = (&token.lexeme[..]).parse().expect("Failed to parse number");
                 self.submit(n::Node::Number(n::NumberNode(number)))

@@ -11,6 +11,8 @@ pub use crate::ast::Node;
 pub use crate::ast::Tag;
 pub use crate::interpreter::Interpreter;
 pub use crate::interpreter::Value;
+pub use crate::result::runtime::ErrorKind;
+pub use crate::result::runtime::ErrorKind::*;
 pub use crate::result::*;
 
 pub use std::convert::TryFrom;
@@ -23,9 +25,9 @@ pub mod node {
 macro_rules! defnode {
     ($enum:path : $struct:ident :: $var:ident => $body:expr ) => {
         impl TryFrom<Vec<Node>> for $struct {
-            type Error = parser::ErrorKind;
+            type Error = ErrorKind;
 
-            fn try_from($var: Vec<Node>) -> Result<$struct, parser::ErrorKind> {
+            fn try_from($var: Vec<Node>) -> Result<$struct, ErrorKind> {
                 $body
             }
         }
@@ -35,11 +37,10 @@ macro_rules! defnode {
             }
         }
         impl ToNode for $struct {
-            fn make_node($var: Vec<Node>) -> Result<Node, parser::ErrorKind> {
+            fn make_node($var: Vec<Node>) -> Result<Node, ErrorKind> {
                 let node = $struct::try_from($var)?;
                 Ok(node.into())
             }
         }
-        
     };
 }

@@ -3,7 +3,7 @@ use crate::ast::node::Node::List;
 use crate::ast::node::ToNode;
 use crate::ast::Tag;
 use crate::interpreter::Interpreter;
-use crate::result::parser::ErrorKind;
+use crate::result::runtime::ErrorKind;
 
 #[derive(Debug, Clone)]
 pub struct ListNode {

@@ -1,7 +1,7 @@
 use crate::ast::node::{Node, ToNode};
 use crate::ast::tag::Partition;
-use crate::result::parser::ErrorKind;
-use crate::result::parser::ErrorKind::General;
+use crate::result::runtime::ErrorKind;
+use crate::result::runtime::ErrorKind::General;
 use crate::{ast, ast::Tag};
 
 #[derive(Debug, Clone)]

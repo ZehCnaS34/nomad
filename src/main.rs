@@ -14,9 +14,9 @@ pub mod prelude;
 use crate::ast::parser;
 use crate::ast::parser::parse;
 use crate::ast::scanner::Scanner;
-use crate::result::parser::ErrorKind as PEK;
+use crate::result::runtime::ErrorKind as PEK;
 use crate::result::runtime::ErrorKind as REK;
-use crate::result::scanner::ErrorKind as SEK;
+use crate::result::runtime::ErrorKind as SEK;
 use crate::result::RuntimeResult as Result;
 use std::cell::Cell;
 use std::fs::read_to_string;
@@ -25,28 +25,7 @@ use std::str::FromStr;
 
 struct Environment {}
 
-#[derive(Debug)]
-struct MainResult;
-
 fn run_repl() {}
-
-impl From<SEK> for REK {
-    fn from(_: SEK) -> Self {
-        todo!()
-    }
-}
-
-impl From<PEK> for REK {
-    fn from(_: PEK) -> Self {
-        todo!()
-    }
-}
-
-impl From<io::ErrorKind> for REK {
-    fn from(_: io::ErrorKind) -> Self {
-        todo!()
-    }
-}
 
 macro_rules! take {
     ($value:expr) => {

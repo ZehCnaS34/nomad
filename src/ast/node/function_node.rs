@@ -4,7 +4,7 @@ use std::any::Any;
 
 use crate::ast::node::{Node, SymbolNode, ToNode, VectorNode};
 use crate::ast::tag::Partition;
-use crate::result::parser;
+use crate::result::runtime;
 use crate::result::runtime::ErrorKind::General;
 use crate::{ast, ast::Tag};
 
@@ -66,7 +66,7 @@ defnode! {
                     parameters,
                     body: vec![vec![node], body].concat(),
                 },
-                (_, _) => return Err(parser::ErrorKind::General("fuck")),
+                (_, _) => return Err(General("fuck")),
             },
         )
     }

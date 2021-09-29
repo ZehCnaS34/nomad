@@ -4,8 +4,8 @@ use crate::ast::Tag;
 use crate::defnode;
 use crate::interpreter::Interpreter;
 use crate::prelude::*;
-use crate::result::parser::ErrorKind;
-use crate::result::parser::ErrorKind::General;
+use crate::result::runtime::ErrorKind;
+use crate::result::runtime::ErrorKind::General;
 
 #[derive(Debug, Clone)]
 pub struct DoNode {

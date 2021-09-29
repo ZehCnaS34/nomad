@@ -95,8 +95,7 @@ impl Execute for ProgramNode {
 
 impl Execute for IfNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
-        if self.condition.execute(interpreter)?.truthy()
-        {
+        if self.condition.execute(interpreter)?.truthy() {
             self.true_branch.execute(interpreter)
         } else {
             self.false_branch.execute(interpreter)
@@ -133,12 +132,12 @@ impl Execute for WhileNode {
 
 impl Execute for DefinitionNode {
     fn execute(&self, interpreter: &Interpreter) -> RuntimeResult<Value> {
-        let ident = interpreter.interpret_tag(self.ident())?;
+        let ident = self.ident().execute(interpreter)?;
         if !ident.is_local_identifier() {
             panic!("invalid identifier")
         }
         let ident = ident.take_symbol().ok_or(ErrorKind::InvalidNode)?;
-        let value = interpreter.interpret_and_resolve_tag(self.value())?;
+        let value = self.value().execute(interpreter)?;
         interpreter.define(ident, value)
     }
 }

@@ -1,37 +1,24 @@
-pub mod scanner {
-    #[derive(Debug)]
-    pub enum ErrorKind {
-        General(&'static str),
-    }
-}
+use crate::prelude::*;
 
 pub mod runtime {
     #[derive(Debug)]
     pub enum ErrorKind {
-        NotDefined,
-        InvalidNamespace,
-        InvalidOperation,
-        NodeNotFound,
-        InvalidNode,
-        InvalidArgumentArity,
         BindingNotFound,
-        TagNodeMissMatch,
-        MissingNode,
-        StorageIssue,
-        General(&'static str),
-    }
-}
-
-pub mod parser {
-    #[derive(Debug)]
-    pub enum ErrorKind {
-        UnexpectedEof,
-        ExpectedClosingParen,
         CouldNotParseAtom,
+        ExpectedClosingParen,
         IfMissingCondition,
         IfMissingTrueBranch,
+        InvalidArgumentArity,
         InvalidDefForm,
+        InvalidNamespace,
+        InvalidNode,
         InvalidOperation,
+        MissingNode,
+        NodeNotFound,
+        NotDefined,
+        StorageIssue,
+        TagNodeMissMatch,
+        UnexpectedEof,
         General(&'static str),
     }
 }
@@ -41,13 +28,6 @@ pub trait MakeError {
     fn info(message: &'static str) -> Self::Item;
 }
 
-pub type ParseResult<T> = std::result::Result<T, parser::ErrorKind>;
-impl<T> MakeError for ParseResult<T> {
-    type Item = ParseResult<T>;
-    fn info(message: &'static str) -> Self::Item {
-        Err(parser::ErrorKind::General(message))
-    }
-}
 pub type RuntimeResult<T> = std::result::Result<T, runtime::ErrorKind>;
 impl<T> MakeError for RuntimeResult<T> {
     type Item = RuntimeResult<T>;
@@ -55,10 +35,11 @@ impl<T> MakeError for RuntimeResult<T> {
         Err(runtime::ErrorKind::General(message))
     }
 }
-pub type ScannerResult<T> = std::result::Result<T, scanner::ErrorKind>;
-impl<T> MakeError for ScannerResult<T> {
-    type Item = ScannerResult<T>;
-    fn info(message: &'static str) -> Self::Item {
-        Err(scanner::ErrorKind::General(message))
+
+use std::io;
+
+impl From<io::ErrorKind> for ErrorKind {
+    fn from(_: io::ErrorKind) -> Self {
+        General("io operation failure")
     }
 }

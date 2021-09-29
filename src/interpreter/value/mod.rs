@@ -1,6 +1,6 @@
 use crate::interpreter::operation::Conj;
-use crate::interpreter::operation::Length;
 use crate::interpreter::operation::Introspection;
+use crate::interpreter::operation::Length;
 use crate::interpreter::operation::Lookup;
 use crate::result::runtime::ErrorKind as Error;
 use crate::result::RuntimeResult as Result;
