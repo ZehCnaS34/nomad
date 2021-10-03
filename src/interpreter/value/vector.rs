@@ -9,8 +9,8 @@ use std::sync::Arc;
 use Node::*;
 use View::*;
 
-const INTERNAL_LINK_ERROR: &'static str = "Links should have at least one child.";
-const LINK_INVARIANT: &'static str = "Expected an internal link";
+const INTERNAL_LINK_ERROR: &str = "Links should have at least one child.";
+const LINK_INVARIANT: &str = "Expected an internal link";
 
 impl<T> Length for Vector<T> {
     fn length(&self) -> usize {
@@ -110,31 +110,6 @@ impl<T> Node<T> {
         }
     }
 
-    fn has_right_most_space(&self) -> bool {
-        match self.view() {
-            Values(values) => values.len() < SLOTS,
-            Links(links) => links
-                .last()
-                .expect(INTERNAL_LINK_ERROR)
-                .as_ref()
-                .has_right_most_space(),
-        }
-    }
-
-    fn is_full(&self) -> bool {
-        match self.view() {
-            Values(values) => values.len() >= SLOTS,
-            Links(links) => {
-                if links.len() < SLOTS {
-                    false
-                } else {
-                    let last_link = self.last_link().unwrap();
-                    last_link.is_full()
-                }
-            }
-        }
-    }
-
     fn links(&self) -> Option<&Vec<Link<T>>> {
         match self.view() {
             Links(links) => Some(links),
@@ -146,17 +121,6 @@ impl<T> Node<T> {
         match self {
             Node::Leaf { values } => Values(values),
             Node::Internal { links, .. } => Links(links),
-        }
-    }
-
-    fn last_link(&self) -> Option<&Link<T>> {
-        self.links()?.last()
-    }
-
-    fn values(&self) -> Option<&Vec<T>> {
-        match self {
-            Node::Leaf { values } => Some(values),
-            Node::Internal { .. } => None,
         }
     }
 
@@ -286,12 +250,6 @@ impl<T> Node<T> {
         }
     }
 }
-
-// impl<T> Drop for Node<T> {
-//     fn drop(&mut self) {
-//         println!("dropping") ;
-//     }
-// }
 
 impl<T: fmt::Display> fmt::Display for Vector<T> {
     fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {

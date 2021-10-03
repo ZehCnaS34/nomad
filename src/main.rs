@@ -12,6 +12,7 @@ pub mod interpreter;
 pub mod result;
 #[macro_use]
 pub mod prelude;
+mod emitter;
 
 use prelude::*;
 
@@ -53,6 +54,6 @@ mod cli {
             )
             .get_matches();
         let config = matches.value_of("source").unwrap_or("core.nd");
-        return String::from(config);
+        String::from(config)
     }
 }
