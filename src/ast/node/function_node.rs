@@ -63,7 +63,7 @@ defnode! {
                     parameters,
                     body: vec![vec![node], body].concat(),
                 },
-                (_, _) => return Err(General("fuck")),
+                (_, _) => return Err(General("invalid function call")),
             },
         )
     }

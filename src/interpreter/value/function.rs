@@ -63,72 +63,72 @@ macro_rules! native_function {
 
 native_function! {
     Plus(parameters, int) ("+", Arity::Any) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Minus(parameters, int) ("-", Arity::Any) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Multiply(parameters, int) ("*", Arity::Any) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Divide(parameters, int) ("/", Arity::Any) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Modulus(parameters, int) ("mod", Arity::Fixed(2)) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Equal(parameters, int) ("=", Arity::Any) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     LessThan(parameters, int) ("<", Arity::Any) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     GreaterThan(parameters, int) (">", Arity::Any) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Println(parameters, int) ("println", Arity::Any) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Print(parameters, int) ("print", Arity::Any) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Conj(parameters, int) ("conj", Arity::Fixed(2)) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Get(parameters, int) ("get", Arity::Or(2, 3)) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Count(parameters, int) ("count", Arity::Fixed(1)) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 native_function! {
     Now(parameters, int) ("now", Arity::None) : {
-        Err(General("fuck"))
+        Err(General("todo"))
     }
 }
 

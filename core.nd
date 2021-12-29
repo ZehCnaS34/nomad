@@ -1,7 +1,7 @@
 (fn name [hello]
     (if [1 2 3]
         (println "hi")
-        (println "fuck")))
+        (println "welp")))
 
 (conj env "simple")
 

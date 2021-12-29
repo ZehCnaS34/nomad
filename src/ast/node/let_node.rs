@@ -15,7 +15,7 @@ impl LetNode {}
 
 defnode! {
     Node::Let : LetNode :: nodes => {
-        let (_, bindings, body) = nodes.take_2().ok_or(General("fuck"))?;
+        let (_, bindings, body) = nodes.take_2().ok_or(General("invalid let node"))?;
         let bindings = bindings.take_vector().ok_or(General("let bindings must be a vector"))?;
         Ok(LetNode{
             bindings,

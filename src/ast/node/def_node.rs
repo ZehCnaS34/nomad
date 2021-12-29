@@ -25,7 +25,7 @@ impl DefinitionNode {
 defnode! {
     Node::Definition : DefinitionNode :: nodes => {
         let (_, ident, value, _) = nodes.take_3().ok_or(CouldNotParseAtom)?;
-        let ident = ident.take_symbol().ok_or(General("fuck"))?;
+        let ident = ident.take_symbol().ok_or(General("Invalid def form"))?;
         Ok(DefinitionNode {
             ident,
             value: Box::new(value),
