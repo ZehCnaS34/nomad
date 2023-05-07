@@ -1,0 +1,6 @@
+(
+    ns nomad.core
+)
+
+
+(println "awesome")
