@@ -1,7 +1,5 @@
 #[derive(Debug, PartialEq)]
-enum Error {
-    Tokenize,
-}
+enum Error {}
 
 #[derive(Debug, PartialEq)]
 enum TokenKind {
@@ -9,7 +7,10 @@ enum TokenKind {
     CloseParen,
     OpenBracket,
     CloseBracket,
+    BackQuote,
     Quote,
+    Hash,
+    Percent,
 }
 
 #[derive(Debug, PartialEq)]
@@ -66,8 +67,32 @@ fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
                 });
                 source.next();
             }
+            '`' => {
+                tokens.push(Token {
+                    kind: TokenKind::BackQuote,
+                    offset: i,
+                    text: format!("{}", c),
+                });
+                source.next();
+            }
+            '#' => {
+                tokens.push(Token {
+                    kind: TokenKind::Hash,
+                    offset: i,
+                    text: format!("{}", c),
+                });
+                source.next();
+            }
+            '%' => {
+                tokens.push(Token {
+                    kind: TokenKind::Percent,
+                    offset: i,
+                    text: format!("{}", c),
+                });
+                source.next();
+            }
             _ => {
-                panic!("Awesome");
+                todo!();
             }
         }
     }
@@ -84,17 +109,25 @@ mod test {
         simple_tokens_helper(TokenKind::CloseParen, ")");
         simple_tokens_helper(TokenKind::OpenBracket, "[");
         simple_tokens_helper(TokenKind::CloseBracket, "]");
+        simple_tokens_helper(TokenKind::BackQuote, "`");
         simple_tokens_helper(TokenKind::Quote, "'");
+        simple_tokens_helper(TokenKind::Hash, "#");
+    }
+
+    #[test]
+    fn test_compound_token() {
+        simple_tokens_helper(TokenKind::Percent, "%");
     }
 
     fn simple_tokens_helper(kind: TokenKind, src: &str) {
+        let result = tokenize(src);
         assert_eq!(
             Ok(vec![Token {
                 kind,
                 text: String::from(src),
                 offset: 0
             }]),
-            tokenize(src)
+            result
         )
     }
 }
