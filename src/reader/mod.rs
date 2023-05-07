@@ -11,6 +11,7 @@ enum TokenKind {
     Quote,
     Hash,
     Percent,
+    PercentUnit(usize),
 }
 
 #[derive(Debug, PartialEq)]
@@ -23,9 +24,8 @@ struct Token {
 fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
     let mut source = source.chars().into_iter().enumerate().peekable();
     let mut tokens = vec![];
-    let mut token = String::new();
 
-    while let Some(&(i, c)) = source.peek() {
+    while let Some((i, c)) = source.next() {
         match c {
             '(' => {
                 tokens.push(Token {
@@ -33,7 +33,6 @@ fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
                     offset: i,
                     text: format!("{}", c),
                 });
-                source.next();
             }
             ')' => {
                 tokens.push(Token {
@@ -41,7 +40,6 @@ fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
                     offset: i,
                     text: format!("{}", c),
                 });
-                source.next();
             }
             '[' => {
                 tokens.push(Token {
@@ -49,7 +47,6 @@ fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
                     offset: i,
                     text: format!("{}", c),
                 });
-                source.next();
             }
             ']' => {
                 tokens.push(Token {
@@ -57,7 +54,6 @@ fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
                     offset: i,
                     text: format!("{}", c),
                 });
-                source.next();
             }
             '\'' => {
                 tokens.push(Token {
@@ -65,7 +61,6 @@ fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
                     offset: i,
                     text: format!("{}", c),
                 });
-                source.next();
             }
             '`' => {
                 tokens.push(Token {
@@ -73,7 +68,6 @@ fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
                     offset: i,
                     text: format!("{}", c),
                 });
-                source.next();
             }
             '#' => {
                 tokens.push(Token {
@@ -81,16 +75,24 @@ fn tokenize(source: &str) -> Result<Vec<Token>, Error> {
                     offset: i,
                     text: format!("{}", c),
                 });
-                source.next();
             }
-            '%' => {
-                tokens.push(Token {
-                    kind: TokenKind::Percent,
-                    offset: i,
-                    text: format!("{}", c),
-                });
-                source.next();
-            }
+            '%' => match source.peek() {
+                Some(&(_, c)) if c.is_digit(10) => {
+                    tokens.push(Token {
+                        kind: TokenKind::PercentUnit(c.to_digit(10).unwrap() as usize),
+                        offset: i,
+                        text: format!("%{}", c),
+                    });
+                    source.next();
+                }
+                _ => {
+                    tokens.push(Token {
+                        kind: TokenKind::Percent,
+                        offset: i,
+                        text: format!("{}", c),
+                    });
+                }
+            },
             _ => {
                 todo!();
             }
@@ -117,6 +119,8 @@ mod test {
     #[test]
     fn test_compound_token() {
         simple_tokens_helper(TokenKind::Percent, "%");
+        simple_tokens_helper(TokenKind::PercentUnit(1), "%1");
+        simple_tokens_helper(TokenKind::PercentUnit(2), "%2");
     }
 
     fn simple_tokens_helper(kind: TokenKind, src: &str) {
