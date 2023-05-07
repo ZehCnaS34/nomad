@@ -1,7 +1,0 @@
-(def fact
-  (fn [n]
-    (if (= n 1)
-      n
-      (* n (fact (- n 1))))))
-
-(println (fact 10))
